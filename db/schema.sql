@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- بيانات تجريبية: أستاذ افتراضي (كلمة المرور: Admin@123)
+-- بيانات تجريبية: أستاذ افتراضي (كلمة المرور: password)
 INSERT INTO teachers (name, email, password_hash) VALUES
 ('الأستاذ الإداري', 'admin@dhakali.edu', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
 

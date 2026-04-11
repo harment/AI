@@ -150,7 +150,6 @@ new Chart(document.getElementById('lessonChart'), {
   options: { plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { family: 'Tajawal' } } } } }
 });
 new Chart(document.getElementById('timeChart'), {
-  type: 'horizontalBar',
   type: 'bar',
   data: { labels: timeLabels, datasets: [{ label: 'دقائق', data: timeSecs, backgroundColor: '#1565C0' }] },
   options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { family: 'Tajawal' } } } } }
