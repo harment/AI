@@ -1,0 +1,21 @@
+# Uploaded user content
+uploads/pdfs/*
+uploads/podcasts/*
+uploads/videos/*
+uploads/images/*
+!uploads/**/.gitkeep
+
+# Environment / secrets
+.env
+config/local.php
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log

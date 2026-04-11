@@ -1,0 +1,46 @@
+<?php
+// =============================================
+// إعدادات قاعدة البيانات
+// =============================================
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
+define('DB_NAME', getenv('DB_NAME') ?: 'dhakali_db');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_CHARSET', 'utf8mb4');
+
+// إعدادات التطبيق
+define('APP_NAME', 'المساعد الذّكاليّ');
+define('APP_URL',  (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+define('APP_VERSION', '1.0.0');
+
+// مفاتيح الذكاء الاصطناعي (يُعدَّل حسب البيئة)
+define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
+define('OPENAI_API_KEY', getenv('OPENAI_API_KEY') ?: '');
+
+// إعدادات الجلسة
+define('SESSION_LIFETIME', 7200); // ساعتان
+
+// مسار رفع الملفات
+define('UPLOAD_DIR', __DIR__ . '/../uploads/');
+define('UPLOAD_URL', APP_URL . '/uploads/');
+
+// إنشاء اتصال PDO
+function getDB(): PDO {
+    static $pdo = null;
+    if ($pdo === null) {
+        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+        try {
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            die(json_encode(['error' => 'خطأ في الاتصال بقاعدة البيانات']));
+        }
+    }
+    return $pdo;
+}
