@@ -66,8 +66,7 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            http_response_code(500);
-            die(json_encode(['error' => 'خطأ في الاتصال بقاعدة البيانات']));
+            throw new RuntimeException('خطأ في الاتصال بقاعدة البيانات', 500, $e);
         }
     }
     return $pdo;
