@@ -23,8 +23,8 @@
 ### الخطوات
 
 1. استنساخ المستودع: `git clone https://github.com/harment/AI.git`
-2. إنشاء قاعدة البيانات: `mysql -u root -p < db/schema.sql`
-3. تعديل `config/db.php` بمعلومات قاعدة البيانات
+2. إنشاء ملف الإعدادات: `cp .env.example .env` ثم عدّل `.env` ببيانات قاعدة البيانات
+3. إنشاء قاعدة البيانات: `mysql -u root -p < db/schema.sql`
 4. فحص الإعداد: افتح `setup.php`
 
 ## 🔑 بيانات الدخول التجريبية
