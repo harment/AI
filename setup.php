@@ -21,6 +21,9 @@ foreach ($dirs as $dir) {
     $checks["Dir: $dir"] = is_writable($path);
 }
 
+// .env file
+$checks['.env file'] = file_exists(__DIR__ . '/.env');
+
 // DB Connection
 try {
     require_once __DIR__ . '/config/db.php';

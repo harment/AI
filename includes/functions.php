@@ -4,6 +4,25 @@
 // =============================================
 require_once __DIR__ . '/../config/db.php';
 
+// معالج عالمي للاستثناءات غير الملتقطة
+set_exception_handler(function (Throwable $e): void {
+    http_response_code(500);
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if (str_starts_with($uri, '/api/')) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    } else {
+        echo '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">'
+            . '<title>خطأ – المساعد الذّكاليّ</title>'
+            . '<style>body{font-family:sans-serif;text-align:center;padding:3rem;background:#f9fafb;}'
+            . 'h2{color:#c62828;}a{color:#1a237e;}</style></head><body>'
+            . '<h2>⚠️ ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</h2>'
+            . '<p>يرجى التحقق من إعدادات قاعدة البيانات.</p>'
+            . '<a href="/setup.php">🔧 فحص الإعداد</a></body></html>';
+    }
+    exit;
+});
+
 // بدء الجلسة
 function startSession(): void {
     if (session_status() === PHP_SESSION_NONE) {

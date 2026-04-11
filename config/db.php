@@ -1,5 +1,33 @@
 <?php
 // =============================================
+// تحميل ملف .env إن وُجد
+// =============================================
+(function () {
+    $envFile = __DIR__ . '/../.env';
+    if (!file_exists($envFile)) return;
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        $pos = strpos($line, '=');
+        if ($pos === false) continue;
+        $key   = trim(substr($line, 0, $pos));
+        $value = trim(substr($line, $pos + 1));
+        // إزالة علامات الاقتباس الاختيارية
+        if (strlen($value) >= 2 && (
+            ($value[0] === '"'  && substr($value, -1) === '"') ||
+            ($value[0] === "'"  && substr($value, -1) === "'")
+        )) {
+            $value = substr($value, 1, -1);
+        }
+        if (getenv($key) === false) {   // لا تلغي متغيرات النظام
+            putenv("$key=$value");
+            $_ENV[$key] = $value;
+        }
+    }
+})();
+
+// =============================================
 // إعدادات قاعدة البيانات
 // =============================================
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
@@ -38,8 +66,7 @@ function getDB(): PDO {
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            http_response_code(500);
-            die(json_encode(['error' => 'خطأ في الاتصال بقاعدة البيانات']));
+            throw new RuntimeException('خطأ في الاتصال بقاعدة البيانات', 500, $e);
         }
     }
     return $pdo;
