@@ -111,8 +111,8 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gemini') {
-        // gemini-2.0-flash: stable GA model (released Feb 2025), available via v1 API
-        $url     = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
+        // gemini-2.5-flash: best price-performance model with reasoning, available via v1beta API
+        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . urlencode($apiKey);
         $payload = json_encode([
             'contents'         => [['parts' => [['text' => $prompt]]]],
             'generationConfig' => ['maxOutputTokens' => 8192],
@@ -358,7 +358,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
       <label class="form-label" style="margin:0;">المزوّد</label>
       <select id="providerSel" class="form-control" style="width:auto;" onchange="updateProviderStatus()">
         <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-          Google Gemini 2.0 Flash <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+          Google Gemini 2.5 Flash <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="openai" <?= in_array('openai', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
           OpenAI GPT-4o-mini <?= in_array('openai', $configuredProviders) ? '✓' : '' ?>
