@@ -87,7 +87,7 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gemini') {
-        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
+        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
         $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
 
         $ch = curl_init($url);
