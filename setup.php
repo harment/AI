@@ -32,7 +32,7 @@ $checks = [];
 $checks['PHP 8.0+'] = version_compare(PHP_VERSION, '8.0.0', '>=');
 
 // Extensions
-foreach (['pdo', 'pdo_mysql', 'json', 'mbstring', 'fileinfo'] as $ext) {
+foreach (['pdo', 'pdo_mysql', 'json', 'mbstring', 'fileinfo', 'curl'] as $ext) {
     $checks["PHP ext: $ext"] = extension_loaded($ext);
 }
 
@@ -47,9 +47,17 @@ foreach ($dirs as $dir) {
 // .env file
 $checks['.env file'] = file_exists(__DIR__ . '/.env');
 
-// DB Connection
+// Gemini API Key configured
+$geminiKey = '';
 try {
     require_once __DIR__ . '/config/db.php';
+    $geminiKey = GEMINI_API_KEY;
+} catch (Exception $e) {}
+$checks['Gemini API Key'] = !empty($geminiKey);
+
+// DB Connection
+try {
+    if (!isset($db)) { require_once __DIR__ . '/config/db.php'; }
     $db = getDB();
     $db->query("SELECT 1");
     $checks['Database Connection'] = true;
@@ -93,6 +101,18 @@ $allGood = !in_array(false, $checks, true);
     <strong>لإعداد قاعدة البيانات:</strong><br>
     <code>mysql -u root -p &lt; db/schema.sql</code><br><br>
     أو استورد ملف <strong>db/schema.sql</strong> عبر phpMyAdmin.
+  </div>
+  <?php endif; ?>
+
+  <?php if (empty($geminiKey)): ?>
+  <div class="alert alert-warning" style="margin-top:1rem;">
+    ⚠️ <strong>مفتاح Gemini API غير مُعيَّن.</strong> لن تعمل ميزات الذكاء الاصطناعي.<br>
+    <strong>الحل:</strong> انسخ <code>.env.example</code> إلى <code>.env</code> وأضف مفتاحك:<br>
+    <code style="display:block;margin:.5rem 0;background:#f5f5f5;padding:.4rem .7rem;border-radius:4px;">
+      cp .env.example .env<br>
+      # ثم عدّل GEMINI_API_KEY= بمفتاحك من:<br>
+      # https://aistudio.google.com/app/apikey
+    </code>
   </div>
   <?php endif; ?>
 

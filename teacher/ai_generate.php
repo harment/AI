@@ -75,20 +75,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /**
- * استدعاء Gemini أو OpenAI
+ * استدعاء Gemini أو OpenAI عبر cURL
  */
 function callAI(string $prompt, string $apiKey, string $provider): array {
     if (empty($apiKey)) {
-        return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API. يرجى إدخاله في الحقل أدناه.'];
+        return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API. يرجى إدخاله في الحقل أدناه أو في ملف .env (GEMINI_API_KEY=...).'];
+    }
+
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'error' => 'مكتبة cURL غير مفعّلة على الخادم. يرجى تفعيل php-curl.'];
     }
 
     if ($provider === 'gemini') {
         $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
         $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
-        $ctx     = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => $payload, 'timeout' => 30]]);
-        $resp    = @file_get_contents($url, false, $ctx);
-        if ($resp === false) return ['success' => false, 'error' => 'فشل الاتصال بـ Gemini'];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 45,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || $curlErr) {
+            return ['success' => false, 'error' => 'فشل الاتصال بـ Gemini: ' . $curlErr];
+        }
         $data = json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? $resp;
+            return ['success' => false, 'error' => "خطأ من Gemini (HTTP $httpCode): " . mb_substr($apiErr, 0, 300)];
+        }
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
         // Strip markdown code fences
         $text = preg_replace('/^```(?:json)?\s*/m', '', $text);
@@ -99,10 +124,31 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     if ($provider === 'openai') {
         $url     = "https://api.openai.com/v1/chat/completions";
         $payload = json_encode(['model' => 'gpt-4o-mini', 'messages' => [['role' => 'user', 'content' => $prompt]], 'max_tokens' => 2000]);
-        $ctx     = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\nAuthorization: Bearer $apiKey\r\n", 'content' => $payload, 'timeout' => 30]]);
-        $resp    = @file_get_contents($url, false, $ctx);
-        if ($resp === false) return ['success' => false, 'error' => 'فشل الاتصال بـ OpenAI'];
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey],
+            CURLOPT_TIMEOUT        => 45,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || $curlErr) {
+            return ['success' => false, 'error' => 'فشل الاتصال بـ OpenAI: ' . $curlErr];
+        }
         $data = json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? $resp;
+            return ['success' => false, 'error' => "خطأ من OpenAI (HTTP $httpCode): " . mb_substr($apiErr, 0, 300)];
+        }
         $text = $data['choices'][0]['message']['content'] ?? '';
         return ['success' => true, 'text' => trim($text)];
     }
