@@ -186,9 +186,9 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 
     if ($provider === 'claude') {
         $url     = "https://api.anthropic.com/v1/messages";
-        // claude-3-haiku-20240307: widely available Claude 3 Haiku (Mar 2024)
+        // claude-haiku-4-5: fastest Claude model per official Anthropic docs
         $payload = json_encode([
-            'model'      => 'claude-3-haiku-20240307',
+            'model'      => 'claude-haiku-4-5',
             'max_tokens' => 4096,
             'messages'   => [['role' => 'user', 'content' => $prompt]],
         ]);
@@ -364,7 +364,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
           OpenAI GPT-4o-mini <?= in_array('openai', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="claude" <?= in_array('claude', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-          Anthropic Claude 3 Haiku <?= in_array('claude', $configuredProviders) ? '✓' : '' ?>
+          Anthropic Claude Haiku 4.5 <?= in_array('claude', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="gamma" <?= in_array('gamma', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
           Gamma (عروض تقديمية) <?= in_array('gamma', $configuredProviders) ? '✓' : '' ?>
