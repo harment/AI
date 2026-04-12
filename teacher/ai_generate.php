@@ -111,8 +111,8 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gemini') {
-        // Use gemini-1.5-flash (GA model) — faster and more reliable than preview models
-        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
+        // gemini-2.0-flash: stable GA model (released Feb 2025), available via v1 API
+        $url     = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
         $payload = json_encode([
             'contents'         => [['parts' => [['text' => $prompt]]]],
             'generationConfig' => ['maxOutputTokens' => 8192],
@@ -186,9 +186,10 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 
     if ($provider === 'claude') {
         $url     = "https://api.anthropic.com/v1/messages";
+        // claude-3-haiku-20240307: widely available Claude 3 Haiku (Mar 2024)
         $payload = json_encode([
-            'model'      => 'claude-3-5-haiku-20241022',
-            'max_tokens' => 8192,
+            'model'      => 'claude-3-haiku-20240307',
+            'max_tokens' => 4096,
             'messages'   => [['role' => 'user', 'content' => $prompt]],
         ]);
 
@@ -225,12 +226,11 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gamma') {
-        $url     = "https://api.gamma.app/v1/generations";
+        // Gamma Headless API — https://developers.gamma.app/
+        $url     = "https://api.gamma.app/v1/generate";
         $payload = json_encode([
-            'title'   => $prompt,
-            'theme'   => 'default',
-            'mode'    => 'text_to_deck',
-            'language'=> 'ar',
+            'text'     => $prompt,
+            'language' => 'ar',
         ]);
 
         $ch = curl_init($url);
@@ -315,13 +315,13 @@ $configuredProviders = array_keys(array_filter($envKeys));
       <label class="form-label" style="margin:0;">المزوّد</label>
       <select id="providerSel" class="form-control" style="width:auto;" onchange="updateProviderStatus()">
         <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-          Google Gemini Flash <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+          Google Gemini 2.0 Flash <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="openai" <?= in_array('openai', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
           OpenAI GPT-4o-mini <?= in_array('openai', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="claude" <?= in_array('claude', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-          Anthropic Claude Haiku <?= in_array('claude', $configuredProviders) ? '✓' : '' ?>
+          Anthropic Claude 3 Haiku <?= in_array('claude', $configuredProviders) ? '✓' : '' ?>
         </option>
         <option value="gamma" <?= in_array('gamma', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
           Gamma (عروض تقديمية) <?= in_array('gamma', $configuredProviders) ? '✓' : '' ?>
