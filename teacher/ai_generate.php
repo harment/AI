@@ -227,22 +227,28 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 
     if ($provider === 'gamma') {
         // Gamma Headless API — https://developers.gamma.app/
-        $url     = "https://api.gamma.app/v1/generate";
-        $payload = json_encode([
-            'text'     => $prompt,
-            'language' => 'ar',
+        // Auth: X-API-KEY header (not Authorization: Bearer)
+        $headers = [
+            'Content-Type: application/json',
+            'X-API-KEY: ' . $apiKey,
+        ];
+
+        // Step 1: Start the generation
+        $startUrl = "https://public-api.gamma.app/v1.0/generations";
+        $payload  = json_encode([
+            'inputText' => $prompt,
+            'textMode'  => 'generate',
+            'format'    => 'presentation',
+            'numCards'  => 10,
         ]);
 
-        $ch = curl_init($url);
+        $ch = curl_init($startUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $apiKey,
-            ],
-            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_HTTPHEADER     => $headers,
+            CURLOPT_TIMEOUT        => 30,
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
@@ -260,13 +266,50 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
             $apiErr = $data['message'] ?? $data['error'] ?? $resp;
             return ['success' => false, 'error' => "خطأ من Gamma (HTTP $httpCode): " . mb_substr((string)$apiErr, 0, 300)];
         }
-        // Gamma returns a deck URL; wrap it as an iframe for presentation_html
-        $deckUrl = $data['url'] ?? $data['deck']['url'] ?? '';
-        if ($deckUrl) {
-            $text = "<iframe src=\"{$deckUrl}\" style=\"width:100%;height:600px;border:none;border-radius:8px;\"></iframe>";
-        } else {
-            $text = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        $generationId = $data['generationId'] ?? '';
+        if (!$generationId) {
+            return ['success' => false, 'error' => 'Gamma: لم يُرجع معرف التوليد (generationId).'];
         }
+
+        // Step 2: Poll until completed or failed (max 60 seconds, every 5 seconds)
+        $pollUrl  = "https://public-api.gamma.app/v1.0/generations/" . urlencode($generationId);
+        $maxTries = 12;
+        $gammaUrl = '';
+        for ($i = 0; $i < $maxTries; $i++) {
+            sleep(5);
+            $ch = curl_init($pollUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => $headers,
+                CURLOPT_TIMEOUT        => 15,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+            ]);
+            $pollResp = curl_exec($ch);
+            $pollCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($pollResp === false || $pollCode !== 200) {
+                continue;
+            }
+            $pollData = json_decode($pollResp, true);
+            $status   = $pollData['status'] ?? '';
+            if ($status === 'completed') {
+                $gammaUrl = $pollData['gammaUrl'] ?? '';
+                break;
+            }
+            if ($status === 'failed') {
+                return ['success' => false, 'error' => 'Gamma: فشل التوليد على خوادم Gamma.'];
+            }
+        }
+
+        if (!$gammaUrl) {
+            return ['success' => false, 'error' => 'Gamma: انتهت مهلة الانتظار أو لم يكتمل التوليد.'];
+        }
+
+        $text = "<iframe src=\"" . htmlspecialchars($gammaUrl, ENT_QUOTES) . "\" style=\"width:100%;height:600px;border:none;border-radius:8px;\" allowfullscreen></iframe>";
         return ['success' => true, 'text' => $text];
     }
 
