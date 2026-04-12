@@ -21,10 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($genType === 'questions') {
         // Generate 7 questions using AI
-        $prompt = "أنت أستاذ لغة عربية متخصص في النحو. الدرس: «{$lesson['name']}». اصنع 7 أسئلة اختيار من متعدد باللغة العربية الفصحى لاختبار الطلاب غير الناطقين بالعربية. كل سؤال له 4 خيارات (أ، ب، ج، د) وإجابة صحيحة واحدة وتغذية راجعة. أجب بصيغة JSON array هكذا:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
+        $prompt = "أنت أستاذ لغة عربية متخصص في النحو. الدرس: «{$lesson['name']}». اصنع 7 أسئلة اختيار من متعدد باللغة العربية الفصحى لاختبار الطلاب غير الناطقين بالعربية. كل سؤال له 4 خيارات (أ، ب، ج، د) وإجابة صحيحة واحدة وتغذية راجعة.\nأجب بـ JSON array فقط بدون أي نص قبله أو بعده، بهذا الشكل بالضبط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
         $result = callAI($prompt, $apiKey, $provider);
         if ($result['success']) {
-            $parsed = @json_decode($result['text'], true);
+            $parsed = @json_decode(extractJson($result['text']), true);
             if (is_array($parsed)) {
                 foreach ($parsed as $q) {
                     if (!empty($q['question_text'])) {
@@ -58,10 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($genType === 'scholar') {
         $scholarName = trim($_POST['scholar_name'] ?? '');
         if ($scholarName) {
-            $prompt = "اكتب معلومات موجزة عن عالم النحو العربي «{$scholarName}» باللغة العربية الفصحى. أجب بصيغة JSON: {\"name\":\"...\",\"era\":\"...\",\"short_bio\":\"...\",\"works\":\"...\"}";
+            $prompt = "اكتب معلومات موجزة عن عالم النحو العربي «{$scholarName}» باللغة العربية الفصحى.\nأجب بـ JSON فقط بدون أي نص قبله أو بعده، بهذا الشكل بالضبط: {\"name\":\"...\",\"era\":\"...\",\"short_bio\":\"...\",\"works\":\"...\"}";
             $result = callAI($prompt, $apiKey, $provider);
             if ($result['success']) {
-                $parsed = @json_decode($result['text'], true);
+                $parsed = @json_decode(extractJson($result['text']), true);
                 if ($parsed) {
                     $db->prepare("INSERT INTO scholars (name, era, short_bio, works) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE era=VALUES(era), short_bio=VALUES(short_bio), works=VALUES(works)")
                        ->execute([$parsed['name'] ?? $scholarName, $parsed['era'] ?? '', $parsed['short_bio'] ?? '', $parsed['works'] ?? '']);
@@ -72,6 +72,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+/**
+ * استخراج أول كتلة JSON صالحة (مصفوفة أو كائن) من نص قد يحتوي على مقدمة
+ */
+function extractJson(string $text): string {
+    // Try array first, then object
+    foreach (['[' => ']', '{' => '}'] as $open => $close) {
+        $start = strpos($text, $open);
+        if ($start === false) continue;
+        $end = strrpos($text, $close);
+        if ($end !== false && $end > $start) {
+            return substr($text, $start, $end - $start + 1);
+        }
+    }
+    return $text;
 }
 
 /**
