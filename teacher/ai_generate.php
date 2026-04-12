@@ -189,11 +189,11 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gemini') {
-        // gemini-2.5-flash: best price-performance model with reasoning, available via v1beta API
-        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . urlencode($apiKey);
+        // gemini-2.0-flash: stable model with large output capacity
+        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
         $payload = json_encode([
             'contents'         => [['parts' => [['text' => $prompt]]]],
-            'generationConfig' => ['maxOutputTokens' => 8192],
+            'generationConfig' => ['maxOutputTokens' => 8192, 'temperature' => 0.2],
         ]);
 
         $ch = curl_init($url);
@@ -267,7 +267,7 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
         // claude-haiku-4-5: fastest Claude model per official Anthropic docs
         $payload = json_encode([
             'model'      => 'claude-haiku-4-5',
-            'max_tokens' => 4096,
+            'max_tokens' => 8192,
             'messages'   => [['role' => 'user', 'content' => $prompt]],
         ]);
 
@@ -300,95 +300,15 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
             return ['success' => false, 'error' => "خطأ من Claude (HTTP $httpCode): " . mb_substr($apiErr, 0, 300)];
         }
         $text = $data['content'][0]['text'] ?? '';
+        $text = preg_replace('/^```(?:json)?\s*/m', '', $text);
+        $text = preg_replace('/\s*```$/m', '', $text);
         return ['success' => true, 'text' => trim($text)];
     }
 
     if ($provider === 'gamma') {
         // Gamma Headless API — https://developers.gamma.app/
-        // Auth: X-API-KEY header (not Authorization: Bearer)
-        $headers = [
-            'Content-Type: application/json',
-            'X-API-KEY: ' . $apiKey,
-        ];
-
-        // Step 1: Start the generation
-        $startUrl = "https://public-api.gamma.app/v1.0/generations";
-        $payload  = json_encode([
-            'inputText' => $prompt,
-            'textMode'  => 'generate',
-            'format'    => 'presentation',
-            'numCards'  => 10,
-        ]);
-
-        $ch = curl_init($startUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $payload,
-            CURLOPT_HTTPHEADER     => $headers,
-            CURLOPT_TIMEOUT        => 30,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-        ]);
-        $resp     = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlErr  = curl_error($ch);
-        curl_close($ch);
-
-        if ($resp === false || $curlErr) {
-            return ['success' => false, 'error' => 'فشل الاتصال بـ Gamma: ' . $curlErr];
-        }
-        $data = json_decode($resp, true);
-        if ($httpCode !== 200 && $httpCode !== 201) {
-            $apiErr = $data['message'] ?? $data['error'] ?? $resp;
-            return ['success' => false, 'error' => "خطأ من Gamma (HTTP $httpCode): " . mb_substr((string)$apiErr, 0, 300)];
-        }
-
-        $generationId = $data['generationId'] ?? '';
-        if (!$generationId) {
-            return ['success' => false, 'error' => 'Gamma: لم يُرجع معرف التوليد (generationId).'];
-        }
-
-        // Step 2: Poll until completed or failed (max 60 seconds, every 5 seconds)
-        $pollUrl  = "https://public-api.gamma.app/v1.0/generations/" . urlencode($generationId);
-        $maxTries = 12;
-        $gammaUrl = '';
-        for ($i = 0; $i < $maxTries; $i++) {
-            sleep(5);
-            $ch = curl_init($pollUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER     => $headers,
-                CURLOPT_TIMEOUT        => 15,
-                CURLOPT_CONNECTTIMEOUT => 10,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-            ]);
-            $pollResp = curl_exec($ch);
-            $pollCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($pollResp === false || $pollCode !== 200) {
-                continue;
-            }
-            $pollData = json_decode($pollResp, true);
-            $status   = $pollData['status'] ?? '';
-            if ($status === 'completed') {
-                $gammaUrl = $pollData['gammaUrl'] ?? '';
-                break;
-            }
-            if ($status === 'failed') {
-                return ['success' => false, 'error' => 'Gamma: فشل التوليد على خوادم Gamma.'];
-            }
-        }
-
-        if (!$gammaUrl) {
-            return ['success' => false, 'error' => 'Gamma: انتهت مهلة الانتظار أو لم يكتمل التوليد.'];
-        }
-
-        $text = "<iframe src=\"" . htmlspecialchars($gammaUrl, ENT_QUOTES) . "\" style=\"width:100%;height:600px;border:none;border-radius:8px;\" allowfullscreen></iframe>";
-        return ['success' => true, 'text' => $text];
+        // Note: Gamma is a presentation tool; its API supports presentations only, not text/Q&A generation.
+        return ['success' => false, 'error' => 'Gamma غير مدعوم لتوليد الأسئلة. استخدم Gemini أو OpenAI أو Claude لهذه المهمة.'];
     }
 
     return ['success' => false, 'error' => 'مزود غير معروف: ' . htmlspecialchars($provider)];
