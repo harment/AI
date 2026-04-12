@@ -138,7 +138,10 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 -- بيانات تجريبية: أستاذ افتراضي (كلمة المرور: password)
 INSERT INTO teachers (name, email, password_hash) VALUES
-('الأستاذ الإداري', 'admin@dhakali.edu', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
+('الأستاذ الإداري', 'admin@dhakali.edu', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+ON DUPLICATE KEY UPDATE
+    password_hash = '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    is_active = 1;
 
 -- بيانات تجريبية: علماء النحو
 INSERT INTO scholars (name, short_bio, era, works) VALUES

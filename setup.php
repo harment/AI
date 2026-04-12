@@ -3,6 +3,29 @@
  * ملف التحقق من إعداد التطبيق
  * يمكن حذفه بعد التثبيت الناجح
  */
+
+// إعادة ضبط كلمة مرور الأستاذ الافتراضي
+$resetMsg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_teacher_password'])) {
+    try {
+        require_once __DIR__ . '/config/db.php';
+        $newPass = password_hash('password', PASSWORD_BCRYPT);
+        $db = getDB();
+        $stmt = $db->prepare("UPDATE teachers SET password_hash = ? WHERE email = 'admin@dhakali.edu'");
+        $stmt->execute([$newPass]);
+        if ($stmt->rowCount() > 0) {
+            $resetMsg = ['type' => 'success', 'text' => '✅ تم إعادة ضبط كلمة مرور الأستاذ الافتراضي إلى: password'];
+        } else {
+            // إنشاء الحساب إن لم يكن موجوداً
+            $stmt = $db->prepare("INSERT INTO teachers (name, email, password_hash) VALUES ('الأستاذ الإداري', 'admin@dhakali.edu', ?)");
+            $stmt->execute([$newPass]);
+            $resetMsg = ['type' => 'success', 'text' => '✅ تم إنشاء حساب الأستاذ الافتراضي بكلمة مرور: password'];
+        }
+    } catch (Exception $e) {
+        $resetMsg = ['type' => 'danger', 'text' => '❌ خطأ: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')];
+    }
+}
+
 $checks = [];
 
 // PHP Version
@@ -72,5 +95,21 @@ $allGood = !in_array(false, $checks, true);
     أو استورد ملف <strong>db/schema.sql</strong> عبر phpMyAdmin.
   </div>
   <?php endif; ?>
+
+  <div class="card" style="margin-top:1.5rem;padding:1rem;">
+    <h3 style="margin-bottom:.75rem;">🔑 إعادة ضبط كلمة مرور الأستاذ</h3>
+    <?php if ($resetMsg): ?>
+    <div class="alert alert-<?= $resetMsg['type'] ?>"><?= $resetMsg['text'] ?></div>
+    <?php endif; ?>
+    <p style="font-size:.9rem;color:var(--muted);">
+      إذا كانت كلمة مرور الأستاذ لا تعمل، اضغط هنا لإعادة ضبطها إلى: <strong>password</strong>
+    </p>
+    <form method="POST">
+      <button type="submit" name="reset_teacher_password" class="btn btn-primary"
+              onclick="return confirm('هل تريد إعادة ضبط كلمة مرور الأستاذ إلى: password ؟')">
+        🔄 إعادة ضبط كلمة المرور
+      </button>
+    </form>
+  </div>
 </body>
 </html>

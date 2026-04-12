@@ -10,7 +10,8 @@ Options -Indexes
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
     
-    # API routes
+    # API routes: أضف .php فقط إن لم يكن المسار يحتوي على امتداد بالفعل
+    RewriteCond %{REQUEST_URI} !\.php([/?]|$)
     RewriteRule ^api/(.*)$ /api/$1.php [QSA,L]
 </IfModule>
 
