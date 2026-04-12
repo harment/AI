@@ -11,16 +11,25 @@ $lesson = $lesson->fetch();
 if (!$lesson) { header('Location: /teacher/lessons.php'); exit; }
 
 $msg = ''; $msgType = 'success';
-$generate = $_GET['generate'] ?? '';
+
+// Map of provider → env-stored key
+$envKeys = [
+    'gemini'  => GEMINI_API_KEY,
+    'openai'  => OPENAI_API_KEY,
+    'claude'  => ANTHROPIC_API_KEY,
+    'gamma'   => GAMMA_API_KEY,
+];
 
 // After form submission: AI generation
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $genType  = $_POST['gen_type'] ?? '';
-    $apiKey   = trim($_POST['api_key'] ?? GEMINI_API_KEY);
     $provider = $_POST['provider'] ?? 'gemini';
 
+    // Use submitted override key; fall back to env-stored key for the provider
+    $submittedKey = trim($_POST['api_key_override'] ?? '');
+    $apiKey = $submittedKey ?: ($envKeys[$provider] ?? '');
+
     if ($genType === 'questions') {
-        // Generate 7 questions using AI
         $prompt = "أنت أستاذ لغة عربية متخصص في النحو. الدرس: «{$lesson['name']}». اصنع 30 سؤال اختيار من متعدد باللغة العربية الفصحى لاختبار الطلاب غير الناطقين بالعربية. كل سؤال له 4 خيارات (أ، ب، ج، د) وإجابة صحيحة واحدة وتغذية راجعة توضيحية تشرح الإجابة الصحيحة.\nأجب بـ JSON array فقط بدون أي نص قبله أو بعده، بهذا الشكل بالضبط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
         $result = callAI($prompt, $apiKey, $provider);
         if ($result['success']) {
@@ -78,7 +87,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  * استخراج أول كتلة JSON صالحة (مصفوفة أو كائن) من نص قد يحتوي على مقدمة
  */
 function extractJson(string $text): string {
-    // Try array first, then object
     foreach (['[' => ']', '{' => '}'] as $open => $close) {
         $start = strpos($text, $open);
         if ($start === false) continue;
@@ -91,11 +99,11 @@ function extractJson(string $text): string {
 }
 
 /**
- * استدعاء Gemini أو OpenAI عبر cURL
+ * استدعاء Gemini أو OpenAI أو Claude أو Gamma عبر cURL
  */
 function callAI(string $prompt, string $apiKey, string $provider): array {
     if (empty($apiKey)) {
-        return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API. يرجى إدخاله في الحقل أدناه أو في ملف .env (GEMINI_API_KEY=...).'];
+        return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API لهذا المزوّد. يرجى إضافته في ملف .env.'];
     }
 
     if (!function_exists('curl_init')) {
@@ -103,8 +111,12 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     }
 
     if ($provider === 'gemini') {
-        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=" . urlencode($apiKey);
-        $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
+        // Use gemini-1.5-flash (GA model) — faster and more reliable than preview models
+        $url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
+        $payload = json_encode([
+            'contents'         => [['parts' => [['text' => $prompt]]]],
+            'generationConfig' => ['maxOutputTokens' => 8192],
+        ]);
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -112,8 +124,8 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_TIMEOUT        => 45,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
@@ -131,7 +143,6 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
             return ['success' => false, 'error' => "خطأ من Gemini (HTTP $httpCode): " . mb_substr($apiErr, 0, 300)];
         }
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-        // Strip markdown code fences
         $text = preg_replace('/^```(?:json)?\s*/m', '', $text);
         $text = preg_replace('/\s*```$/m', '', $text);
         return ['success' => true, 'text' => trim($text)];
@@ -139,7 +150,11 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 
     if ($provider === 'openai') {
         $url     = "https://api.openai.com/v1/chat/completions";
-        $payload = json_encode(['model' => 'gpt-4o-mini', 'messages' => [['role' => 'user', 'content' => $prompt]], 'max_tokens' => 2000]);
+        $payload = json_encode([
+            'model'      => 'gpt-4o-mini',
+            'messages'   => [['role' => 'user', 'content' => $prompt]],
+            'max_tokens' => 8192,
+        ]);
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -147,8 +162,8 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey],
-            CURLOPT_TIMEOUT        => 45,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_FOLLOWLOCATION => true,
         ]);
@@ -169,8 +184,97 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
         return ['success' => true, 'text' => trim($text)];
     }
 
-    return ['success' => false, 'error' => 'مزود غير معروف'];
+    if ($provider === 'claude') {
+        $url     = "https://api.anthropic.com/v1/messages";
+        $payload = json_encode([
+            'model'      => 'claude-3-5-haiku-20241022',
+            'max_tokens' => 8192,
+            'messages'   => [['role' => 'user', 'content' => $prompt]],
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $apiKey,
+                'anthropic-version: 2023-06-01',
+            ],
+            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || $curlErr) {
+            return ['success' => false, 'error' => 'فشل الاتصال بـ Claude: ' . $curlErr];
+        }
+        $data = json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? $resp;
+            return ['success' => false, 'error' => "خطأ من Claude (HTTP $httpCode): " . mb_substr($apiErr, 0, 300)];
+        }
+        $text = $data['content'][0]['text'] ?? '';
+        return ['success' => true, 'text' => trim($text)];
+    }
+
+    if ($provider === 'gamma') {
+        $url     = "https://api.gamma.app/v1/generations";
+        $payload = json_encode([
+            'title'   => $prompt,
+            'theme'   => 'default',
+            'mode'    => 'text_to_deck',
+            'language'=> 'ar',
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+            CURLOPT_TIMEOUT        => 90,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || $curlErr) {
+            return ['success' => false, 'error' => 'فشل الاتصال بـ Gamma: ' . $curlErr];
+        }
+        $data = json_decode($resp, true);
+        if ($httpCode !== 200 && $httpCode !== 201) {
+            $apiErr = $data['message'] ?? $data['error'] ?? $resp;
+            return ['success' => false, 'error' => "خطأ من Gamma (HTTP $httpCode): " . mb_substr((string)$apiErr, 0, 300)];
+        }
+        // Gamma returns a deck URL; wrap it as an iframe for presentation_html
+        $deckUrl = $data['url'] ?? $data['deck']['url'] ?? '';
+        if ($deckUrl) {
+            $text = "<iframe src=\"{$deckUrl}\" style=\"width:100%;height:600px;border:none;border-radius:8px;\"></iframe>";
+        } else {
+            $text = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        }
+        return ['success' => true, 'text' => $text];
+    }
+
+    return ['success' => false, 'error' => 'مزود غير معروف: ' . htmlspecialchars($provider)];
 }
+
+// Determine which providers have env-configured keys (for UI hints)
+$configuredProviders = array_keys(array_filter($envKeys));
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -204,17 +308,33 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
   <div class="alert alert-<?= $msgType ?>"><i class="fas fa-info-circle"></i> <?= clean($msg) ?></div>
   <?php endif; ?>
 
-  <!-- API Key & Provider -->
+  <!-- Provider selector -->
   <div class="card" style="margin-bottom:1.5rem;">
-    <div class="card-header"><div class="card-title"><i class="fas fa-key"></i> إعدادات الذكاء الاصطناعي</div></div>
+    <div class="card-header"><div class="card-title"><i class="fas fa-robot"></i> إعدادات مزوّد الذكاء الاصطناعي</div></div>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;">
       <label class="form-label" style="margin:0;">المزوّد</label>
-      <select id="providerSel" class="form-control" style="width:auto;">
-        <option value="gemini">Google Gemini (مجاني)</option>
-        <option value="openai">OpenAI GPT</option>
+      <select id="providerSel" class="form-control" style="width:auto;" onchange="updateProviderStatus()">
+        <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+          Google Gemini Flash <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+        </option>
+        <option value="openai" <?= in_array('openai', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+          OpenAI GPT-4o-mini <?= in_array('openai', $configuredProviders) ? '✓' : '' ?>
+        </option>
+        <option value="claude" <?= in_array('claude', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+          Anthropic Claude Haiku <?= in_array('claude', $configuredProviders) ? '✓' : '' ?>
+        </option>
+        <option value="gamma" <?= in_array('gamma', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+          Gamma (عروض تقديمية) <?= in_array('gamma', $configuredProviders) ? '✓' : '' ?>
+        </option>
       </select>
-      <label class="form-label" style="margin:0;">مفتاح API</label>
-      <input type="text" id="apiKeyInput" class="form-control" value="<?= clean(GEMINI_API_KEY) ?>" placeholder="أدخل مفتاح الـ API هنا…" autocomplete="off">
+
+      <label class="form-label" style="margin:0;">مفتاح API (اختياري)</label>
+      <div>
+        <input type="password" id="apiKeyOverride" class="form-control"
+               placeholder="اتركه فارغاً لاستخدام المفتاح المحفوظ في .env"
+               autocomplete="new-password" style="max-width:480px;">
+        <small id="keyStatus" style="display:block;margin-top:.35rem;color:var(--muted);"></small>
+      </div>
     </div>
   </div>
 
@@ -224,12 +344,12 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     <!-- Questions -->
     <div class="card">
       <div class="card-header"><div class="card-title"><i class="fas fa-question-circle"></i> توليد الأسئلة</div></div>
-      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد 7 أسئلة اختيار من متعدد من الدرس مع تغذية راجعة تعليمية.</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد 30 سؤال اختيار من متعدد مع تغذية راجعة توضيحية.</p>
       <form method="POST">
         <input type="hidden" name="gen_type" value="questions">
         <input type="hidden" name="provider" id="qProvider" value="gemini">
-        <input type="hidden" name="api_key"  id="qApiKey"   value="">
-        <button type="submit" class="btn btn-primary btn-block" onclick="setApiVars(this.form)">
+        <input type="hidden" name="api_key_override" id="qApiKey" value="">
+        <button type="submit" class="btn btn-primary btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> توليد الأسئلة
         </button>
       </form>
@@ -238,15 +358,15 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     <!-- Presentation -->
     <div class="card">
       <div class="card-header"><div class="card-title"><i class="fas fa-file-powerpoint" style="color:#E53935;"></i> توليد العرض التقديمي</div></div>
-      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد عرضاً HTML تفاعلياً وجذاباً من ملخص الدرس.</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد عرضاً تفاعلياً من ملخص الدرس (أو عبر Gamma).</p>
       <form method="POST">
         <input type="hidden" name="gen_type" value="presentation">
         <input type="hidden" name="provider" id="pProvider" value="gemini">
-        <input type="hidden" name="api_key"  id="pApiKey"   value="">
+        <input type="hidden" name="api_key_override" id="pApiKey" value="">
         <div class="form-group"><label class="form-label">ملخص المحتوى</label>
           <textarea name="content_summary" class="form-control" rows="3" placeholder="الصق هنا محتوى الدرس أو ملخصاً منه…"></textarea>
         </div>
-        <button type="submit" class="btn btn-danger btn-block" onclick="setApiVars(this.form,'p')">
+        <button type="submit" class="btn btn-danger btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> توليد العرض
         </button>
       </form>
@@ -259,11 +379,11 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
       <form method="POST">
         <input type="hidden" name="gen_type" value="scholar">
         <input type="hidden" name="provider" id="sProvider" value="gemini">
-        <input type="hidden" name="api_key"  id="sApiKey"   value="">
+        <input type="hidden" name="api_key_override" id="sApiKey" value="">
         <div class="form-group"><label class="form-label">اسم العالم</label>
           <input type="text" name="scholar_name" class="form-control" placeholder="مثال: سيبويه، ابن مالك…">
         </div>
-        <button type="submit" class="btn btn-accent btn-block" onclick="setApiVars(this.form,'s')">
+        <button type="submit" class="btn btn-accent btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> جلب المعلومات
         </button>
       </form>
@@ -282,13 +402,25 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 <script>
 if (window.innerWidth < 900) document.getElementById('sidebarToggle').style.display = 'block';
 
-function setApiVars(form, prefix) {
-  const key      = document.getElementById('apiKeyInput').value;
+// Providers that have a key saved in .env (server-side check)
+const CONFIGURED = <?= json_encode($configuredProviders) ?>;
+
+function updateProviderStatus() {
   const provider = document.getElementById('providerSel').value;
-  const pField   = form.querySelector('[name="provider"]');
-  const kField   = form.querySelector('[name="api_key"]');
-  if (pField) pField.value = provider;
-  if (kField) kField.value = key;
+  const status   = document.getElementById('keyStatus');
+  if (CONFIGURED.includes(provider)) {
+    status.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> مفتاح محفوظ في .env – يمكن تركه فارغاً</span>';
+  } else {
+    status.innerHTML = '<span style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i> لا يوجد مفتاح محفوظ لهذا المزوّد – أدخل المفتاح أعلاه</span>';
+  }
+}
+updateProviderStatus();
+
+function injectFormVars(form) {
+  const provider = document.getElementById('providerSel').value;
+  const key      = document.getElementById('apiKeyOverride').value.trim();
+  form.querySelector('[name="provider"]').value        = provider;
+  form.querySelector('[name="api_key_override"]').value = key;
 }
 
 // Loading state on submit
