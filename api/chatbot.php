@@ -30,7 +30,7 @@ if (empty($apiKey)) {
 $systemPrompt = "أنت مساعد تعليمي ذكي في تطبيق «المساعد الذّكاليّ» لتعليم العربية لغير الناطقين بها. دورك: توجيه الطلاب لاستخدام التطبيق، تقديم نصائح تربوية، والإجابة على أسئلة اللغة العربية والنحو بأسلوب بسيط ومشجع. أجب دائماً باللغة العربية الفصحى بأسلوب ودود.";
 $prompt       = $systemPrompt . "\n\nسؤال الطالب: " . $message;
 
-$url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . urlencode($apiKey);
+$url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=" . urlencode($apiKey);
 $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
 
 if (!function_exists('curl_init')) {
