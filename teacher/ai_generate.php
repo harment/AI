@@ -30,25 +30,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $apiKey = $submittedKey ?: ($envKeys[$provider] ?? '');
 
     if ($genType === 'questions') {
-        $prompt = "أنت أستاذ لغة عربية متخصص في النحو. الدرس: «{$lesson['name']}». اصنع 30 سؤال اختيار من متعدد باللغة العربية الفصحى لاختبار الطلاب غير الناطقين بالعربية. كل سؤال له 4 خيارات (أ، ب، ج، د) وإجابة صحيحة واحدة وتغذية راجعة توضيحية تشرح الإجابة الصحيحة.\nأجب بـ JSON array فقط بدون أي نص قبله أو بعده، بهذا الشكل بالضبط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
-        $result = callAI($prompt, $apiKey, $provider);
-        if ($result['success']) {
-            $parsed = @json_decode(extractJson($result['text']), true);
-            if (is_array($parsed)) {
-                foreach ($parsed as $q) {
-                    if (!empty($q['question_text'])) {
-                        $db->prepare("INSERT INTO questions (lesson_id,question_text,option_a,option_b,option_c,option_d,correct_option,feedback_correct,feedback_wrong) VALUES (?,?,?,?,?,?,?,?,?)")
-                           ->execute([$lessonId, $q['question_text'], $q['option_a']??'', $q['option_b']??'', $q['option_c']??'', $q['option_d']??'', $q['correct_option']??'a', $q['feedback_correct']??'', $q['feedback_wrong']??'']);
-                    }
-                }
-                $msg = 'تم توليد ' . count($parsed) . ' سؤال بنجاح!';
-            } else {
-                $msg = 'تم الاستجابة من الذكاء لكن التنسيق لم يكن JSON. النص: ' . mb_substr($result['text'], 0, 500);
-                $msgType = 'warning';
-            }
+        // استخراج نص ملف PDF الخاص بالدرس
+        $pdfContent = '';
+        if (!empty($lesson['pdf_url'])) {
+            $pdfPath = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
+            $pdfContent = extractPdfText($pdfPath);
+        }
+
+        if (empty($pdfContent)) {
+            $msg = 'لم يتم العثور على ملف PDF للدرس أو تعذّر استخراج نصه. يرجى التأكد من رفع ملف PDF للدرس أولاً.';
+            $msgType = 'warning';
         } else {
-            $msg = 'فشل الاستدعاء: ' . $result['error'];
-            $msgType = 'danger';
+            // اقتصار المحتوى على 12000 حرف لتجنب تجاوز حد الـ tokens
+            $truncatedContent = mb_substr($pdfContent, 0, 12000);
+            $prompt = "أنت أستاذ لغة عربية متخصص في النحو. فيما يلي المحتوى الكامل لملف PDF للدرس «{$lesson['name']}»:\n\n{$truncatedContent}\n\nبناءً على هذا المحتوى فقط (لا تخترع معلومات من خارجه)، اصنع 30 سؤال اختيار من متعدد باللغة العربية الفصحى لاختبار الطلاب غير الناطقين بالعربية. تأكد أن كل سؤال مستند مباشرة إلى نص الدرس أعلاه. كل سؤال له 4 خيارات (أ، ب، ج، د) وإجابة صحيحة واحدة وتغذية راجعة توضيحية تشرح الإجابة الصحيحة.\nأجب بـ JSON array فقط بدون أي نص قبله أو بعده، بهذا الشكل بالضبط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
+            $result = callAI($prompt, $apiKey, $provider);
+            if ($result['success']) {
+                $parsed = @json_decode(extractJson($result['text']), true);
+                if (is_array($parsed)) {
+                    foreach ($parsed as $q) {
+                        if (!empty($q['question_text'])) {
+                            $db->prepare("INSERT INTO questions (lesson_id,question_text,option_a,option_b,option_c,option_d,correct_option,feedback_correct,feedback_wrong) VALUES (?,?,?,?,?,?,?,?,?)")
+                               ->execute([$lessonId, $q['question_text'], $q['option_a']??'', $q['option_b']??'', $q['option_c']??'', $q['option_d']??'', $q['correct_option']??'a', $q['feedback_correct']??'', $q['feedback_wrong']??'']);
+                        }
+                    }
+                    $msg = 'تم توليد ' . count($parsed) . ' سؤال بنجاح من محتوى ملف PDF!';
+                } else {
+                    $msg = 'تم الاستجابة من الذكاء لكن التنسيق لم يكن JSON. النص: ' . mb_substr($result['text'], 0, 500);
+                    $msgType = 'warning';
+                }
+            } else {
+                $msg = 'فشل الاستدعاء: ' . $result['error'];
+                $msgType = 'danger';
+            }
         }
     }
 
@@ -81,6 +95,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+}
+
+/**
+ * استخراج النص من ملف PDF المخزّن على السيرفر.
+ * يحاول أولاً استخدام pdftotext (poppler)، ثم يعود إلى قراءة
+ * تدفقات النص الخام من ملف PDF (يغطي معظم ملفات PDF القياسية).
+ */
+function extractPdfText(string $filePath): string {
+    if (!file_exists($filePath) || !is_readable($filePath)) {
+        return '';
+    }
+
+    // المحاولة الأولى: pdftotext (إن كان مثبّتاً)
+    if (function_exists('shell_exec')) {
+        $cmd = 'which pdftotext 2>/dev/null';
+        if (!empty(shell_exec($cmd))) {
+            $out = shell_exec('pdftotext ' . escapeshellarg($filePath) . ' - 2>/dev/null');
+            if (!empty(trim($out))) {
+                return trim($out);
+            }
+        }
+    }
+
+    // المحاولة الثانية: قراءة تدفقات النص الخام من ملف PDF
+    $raw = file_get_contents($filePath);
+    if ($raw === false) {
+        return '';
+    }
+
+    $text = '';
+
+    // فك ضغط تدفقات zlib (FlateDecode) واستخراج النص منها
+    if (preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $raw, $streams)) {
+        foreach ($streams[1] as $stream) {
+            // حاول فك الضغط
+            $uncompressed = @gzuncompress($stream);
+            $block = ($uncompressed !== false) ? $uncompressed : $stream;
+
+            // استخراج النص من عمليات Tj و TJ
+            if (preg_match_all('/BT\s*(.*?)\s*ET/s', $block, $btBlocks)) {
+                foreach ($btBlocks[1] as $bt) {
+                    // (text) Tj
+                    if (preg_match_all('/\(([^)]*)\)\s*Tj/s', $bt, $tj)) {
+                        $text .= implode(' ', $tj[1]) . ' ';
+                    }
+                    // [(text)...] TJ
+                    if (preg_match_all('/\[([^\]]*)\]\s*TJ/s', $bt, $TJ)) {
+                        foreach ($TJ[1] as $tjBlock) {
+                            if (preg_match_all('/\(([^)]*)\)/s', $tjBlock, $parts)) {
+                                $text .= implode('', $parts[1]) . ' ';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // تنظيف النص: إزالة الأحرف غير المطبوعة والمسافات الزائدة
+    $text = preg_replace('/[^\x20-\x7E\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{FB50}-\x{FDFF}\x{FE70}-\x{FEFF}\n\r\t ]/u', ' ', $text);
+    $text = preg_replace('/[ \t]+/', ' ', $text);
+    $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+    return trim($text);
 }
 
 /**
