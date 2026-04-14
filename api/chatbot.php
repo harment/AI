@@ -26,20 +26,37 @@ if (empty($apiKey)) {
     exit;
 }
 
-// Call Gemini
+// Call Gemini via cURL
 $systemPrompt = "أنت مساعد تعليمي ذكي في تطبيق «المساعد الذّكاليّ» لتعليم العربية لغير الناطقين بها. دورك: توجيه الطلاب لاستخدام التطبيق، تقديم نصائح تربوية، والإجابة على أسئلة اللغة العربية والنحو بأسلوب بسيط ومشجع. أجب دائماً باللغة العربية الفصحى بأسلوب ودود.";
 $prompt       = $systemPrompt . "\n\nسؤال الطالب: " . $message;
 
-$url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($apiKey);
+$url     = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=" . urlencode($apiKey);
 $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
-$ctx     = stream_context_create(['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => $payload, 'timeout' => 15]]);
-$resp    = @file_get_contents($url, false, $ctx);
 
-if ($resp !== false) {
-    $data  = json_decode($resp, true);
-    $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? getRuleBasedReply($message);
-} else {
+if (!function_exists('curl_init')) {
     $reply = getRuleBasedReply($message);
+} else {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+    ]);
+    $resp    = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($resp !== false && $httpCode === 200) {
+        $data  = json_decode($resp, true);
+        $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? getRuleBasedReply($message);
+    } else {
+        $reply = getRuleBasedReply($message);
+    }
 }
 
 echo json_encode(['reply' => $reply], JSON_UNESCAPED_UNICODE);

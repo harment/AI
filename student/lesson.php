@@ -149,12 +149,12 @@ logActivity($student['id'], $lessonId, 'lesson_view', $lesson['name']);
         <h3 style="margin-bottom:.75rem;">مغامرة <?= clean($lesson['name']) ?></h3>
         <p style="color:var(--muted);max-width:480px;margin:0 auto 1.5rem;">
           أجب على <strong><?= count($questions) ?></strong> سؤال لتصعد إلى القمة واكسب النقاط واكتشف عالماً من علماء النحو!
-          <br>تحذير: خطأان متتاليان وستسقط وتبدأ من جديد.
+          <br>تحذير: لكل سؤال محاولتان – ستظهر لك التغذية الراجعة الصحيحة عند الخطأ مرتين.
         </p>
         <div style="display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap;">
           <div class="badge badge-primary"><i class="fas fa-star"></i> حتى 350 نقطة</div>
           <div class="badge badge-accent"><i class="fas fa-scroll"></i> اكتشف عالم نحو</div>
-          <div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> خطآن = البداية</div>
+          <div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> محاولتان لكل سؤال</div>
         </div>
         <button class="btn btn-primary btn-lg" style="margin-top:2rem;" onclick="launchGame()">
           <i class="fas fa-rocket"></i> ابدأ المغامرة!
@@ -194,7 +194,7 @@ function launchGame() {
   adventureGame = new AdventureGame({
     lessonId: LESSON_ID,
     gameType: GAME_TYPE,
-    questions: AdventureGame.shuffle(QUESTIONS).slice(0, 7),
+    questions: AdventureGame.shuffle(QUESTIONS),
     scholars: SCHOLARS,
     containerId: 'gameContainer',
   });
