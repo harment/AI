@@ -12,7 +12,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     $bom = "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
     echo $bom;
     echo "الاسم,الرقم الجامعي,المستوى,السنة,النقاط,عدد العلماء,المغامرات,تاريخ التسجيل\n";
-    $rows = $db->query("SELECT s.id, s.name, s.university_id, s.level, s.study_year, s.points, COUNT(DISTINCT ss.scholar_id) scholars, COUNT(DISTINCT sg.id) games, s.created_at FROM students s LEFT JOIN student_scholars ss ON ss.student_id=s.id LEFT JOIN student_games sg ON sg.student_id=s.id GROUP BY s.id, s.name, s.university_id, s.level, s.study_year, s.points, s.created_at ORDER BY s.points DESC")->fetchAll();
+    $rows = $db->query("SELECT s.id, s.name, s.university_id, s.level, s.study_year, s.points, s.created_at, COUNT(DISTINCT ss.scholar_id) scholars, COUNT(DISTINCT sg.id) games FROM students s LEFT JOIN student_scholars ss ON ss.student_id=s.id LEFT JOIN student_games sg ON sg.student_id=s.id GROUP BY s.id, s.name, s.university_id, s.level, s.study_year, s.points, s.created_at ORDER BY s.points DESC")->fetchAll();
     foreach ($rows as $r) {
         echo implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $r)) . "\n";
     }
