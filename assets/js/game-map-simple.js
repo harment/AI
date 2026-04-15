@@ -292,11 +292,13 @@ class MapAdventureGame {
                      transition: all 0.3s ease;`;
 
       if (isCurrent) {
-        // <button> with inline onclick – direct binding like the TSX reference
+        // <button> with inline onclick – direct binding like the TSX reference.
+        // window.adventureGame is set in lesson.php; guarding against null handles
+        // any edge-case where the game instance is not yet registered.
         html += `
           <button class="map-point current"
                   data-index="${index}"
-                  onclick="var g=window.adventureGame;if(g&&!g.showingQuestion)g._showQuestion(g.current);"
+                  onclick="(function(){var g=window.adventureGame;if(!g||g.showingQuestion)return;g._showQuestion(g.current);})();"
                   style="${commonStyle}
                      cursor: pointer;
                      pointer-events: auto;
