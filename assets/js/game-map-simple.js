@@ -358,11 +358,18 @@ class MapAdventureGame {
   }
 
   _showQuestion(idx) {
-    if (this.showingQuestion) return;
+    if (this.showingQuestion) {
+      console.log('Already showing a question');
+      return;
+    }
     
     const q = this.questions[idx];
-    if (!q) return;
+    if (!q) {
+      console.error('Question not found:', idx);
+      return;
+    }
 
+    console.log('Showing question:', idx, q.question_text);
     this.showingQuestion = true;
     this.questionAttempts = 0;
 
@@ -386,7 +393,10 @@ class MapAdventureGame {
       </button>`).join('');
 
     opts.querySelectorAll('.option-btn').forEach(btn => {
-      btn.addEventListener('click', () => this._handleAnswer(btn.dataset.key, q));
+      btn.addEventListener('click', () => {
+        console.log('Option button clicked:', btn.dataset.key);
+        this._handleAnswer(btn.dataset.key, q);
+      });
       btn.addEventListener('mouseenter', function() {
         if (!this.disabled) {
           this.style.borderColor = '#3b82f6';
@@ -401,10 +411,13 @@ class MapAdventureGame {
       });
     });
 
+    console.log('Showing popup');
     popup.style.display = 'flex';
   }
 
   _handleAnswer(chosen, q) {
+    console.log('_handleAnswer called:', chosen, 'Correct:', q.correct_option);
+    
     const opts = document.getElementById('optionsGrid');
     const fb = document.getElementById('feedbackBox');
     const next = document.getElementById('nextBtn');
