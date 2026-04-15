@@ -1,0 +1,283 @@
+<!-- واجهة اختيار نمط اللعبة -->
+<div class="game-mode-selector" id="gameModeSelector">
+  <div class="game-mode-header">
+    <h2>🎮 اختر نمط مغامرتك</h2>
+    <p>اختر النمط الذي يناسبك لبدء رحلة التعلم</p>
+  </div>
+  
+  <div class="game-modes-grid">
+    <!-- نمط الجبل -->
+    <div class="game-mode-card" data-mode="mountain">
+      <div class="mode-icon">⛰️</div>
+      <div class="mode-title">مغامرة الجبل</div>
+      <div class="mode-description">اصعد إلى القمة خطوة بخطوة</div>
+      <div class="mode-features">
+        <div class="feature">✓ تحدي الصعود</div>
+        <div class="feature">✓ محطات مثيرة</div>
+      </div>
+      <button class="btn btn-primary mode-select-btn" onclick="selectGameMode('mountain')">
+        ابدأ المغامرة
+      </button>
+    </div>
+    
+    <!-- نمط المتاهة -->
+    <div class="game-mode-card" data-mode="maze">
+      <div class="mode-icon">🗝️</div>
+      <div class="mode-title">مغامرة المتاهة</div>
+      <div class="mode-description">اخرج من المتاهة بحل الألغاز</div>
+      <div class="mode-features">
+        <div class="feature">✓ طريق متعرج</div>
+        <div class="feature">✓ أسرار خفية</div>
+      </div>
+      <button class="btn btn-primary mode-select-btn" onclick="selectGameMode('maze')">
+        ابدأ المغامرة
+      </button>
+    </div>
+    
+    <!-- نمط الجزيرة -->
+    <div class="game-mode-card" data-mode="island">
+      <div class="mode-icon">🏝️</div>
+      <div class="mode-title">مغامرة الجزيرة</div>
+      <div class="mode-description">استكشف الجزيرة واكتشف الكنوز</div>
+      <div class="mode-features">
+        <div class="feature">✓ استكشاف ممتع</div>
+        <div class="feature">✓ كنوز معرفية</div>
+      </div>
+      <button class="btn btn-primary mode-select-btn" onclick="selectGameMode('island')">
+        ابدأ المغامرة
+      </button>
+    </div>
+    
+    <!-- نمط السفينة -->
+    <div class="game-mode-card" data-mode="ship">
+      <div class="mode-icon">⛵</div>
+      <div class="mode-title">مغامرة الإبحار</div>
+      <div class="mode-description">أبحر عبر البحر حتى الميناء</div>
+      <div class="mode-features">
+        <div class="feature">✓ رحلة بحرية</div>
+        <div class="feature">✓ أمواج المعرفة</div>
+      </div>
+      <button class="btn btn-primary mode-select-btn" onclick="selectGameMode('ship')">
+        ابدأ المغامرة
+      </button>
+    </div>
+  </div>
+  
+  <div class="game-info-box">
+    <div class="info-item">
+      <i class="fas fa-question-circle"></i>
+      <span><strong>5 أسئلة</strong> في كل مغامرة</span>
+    </div>
+    <div class="info-item">
+      <i class="fas fa-redo"></i>
+      <span><strong>3 محاولات</strong> يومياً لكل درس</span>
+    </div>
+    <div class="info-item">
+      <i class="fas fa-star"></i>
+      <span>حتى <strong>350 نقطة</strong> للفوز</span>
+    </div>
+    <div class="info-item">
+      <i class="fas fa-user-graduate"></i>
+      <span>اكتشف <strong>علماء النحو</strong></span>
+    </div>
+  </div>
+  
+  <div id="attemptsWarning" class="alert alert-warning" style="display:none;margin-top:1rem;">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>تنبيه:</strong> <span id="attemptsMessage"></span>
+  </div>
+</div>
+
+<script>
+// التحقق من المحاولات المتاحة
+async function checkAttempts(lessonId) {
+  try {
+    const response = await fetch(`/api/games-enhanced.php?lesson_id=${lessonId}`);
+    const data = await response.json();
+    
+    const warningBox = document.getElementById('attemptsWarning');
+    const warningMsg = document.getElementById('attemptsMessage');
+    
+    if (data.can_play) {
+      if (data.attempts_remaining <= 1) {
+        warningBox.style.display = 'block';
+        warningMsg.textContent = `هذه آخر محاولة متاحة لك اليوم!`;
+      } else {
+        warningBox.style.display = 'block';
+        warningBox.className = 'alert alert-info';
+        warningMsg.textContent = `لديك ${data.attempts_remaining} محاولة متبقية اليوم`;
+      }
+      return true;
+    } else {
+      warningBox.style.display = 'block';
+      warningBox.className = 'alert alert-danger';
+      warningMsg.innerHTML = `
+        <strong>لقد استنفدت محاولاتك اليومية (${data.max_attempts} محاولات)</strong><br>
+        <small>يمكنك المحاولة مرة أخرى بعد: ${formatNextAvailableTime(data.next_available)}</small>
+      `;
+      
+      // تعطيل أزرار البدء
+      document.querySelectorAll('.mode-select-btn').forEach(btn => {
+        btn.disabled = true;
+        btn.textContent = 'غير متاح';
+      });
+      
+      return false;
+    }
+  } catch (error) {
+    console.error('Error checking attempts:', error);
+    return true; // السماح باللعب في حالة الخطأ
+  }
+}
+
+function formatNextAvailableTime(timeString) {
+  if (!timeString) return '';
+  const nextTime = new Date(timeString);
+  const now = new Date();
+  const diff = nextTime - now;
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `${hours} ساعة و ${minutes} دقيقة`;
+  } else {
+    return `${minutes} دقيقة`;
+  }
+}
+
+function selectGameMode(mode) {
+  // إخفاء واجهة الاختيار
+  const selector = document.getElementById('gameModeSelector');
+  if (selector) {
+    selector.style.display = 'none';
+  }
+  
+  // إظهار حاوية اللعبة
+  const gameContainer = document.getElementById('gameContainer');
+  if (gameContainer) {
+    gameContainer.style.display = 'flex';
+  }
+  
+  // بدء اللعبة بالنمط المختار
+  if (window.launchGameWithMode) {
+    window.launchGameWithMode(mode);
+  }
+}
+</script>
+
+<style>
+.game-mode-selector {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.game-mode-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.game-mode-header h2 {
+  font-size: 2rem;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.game-mode-header p {
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.game-modes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.game-mode-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.game-mode-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-color: var(--primary);
+}
+
+.mode-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.mode-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.mode-description {
+  color: var(--muted);
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.mode-features {
+  margin-bottom: 1rem;
+  text-align: right;
+}
+
+.mode-features .feature {
+  padding: 0.25rem 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.mode-select-btn {
+  width: 100%;
+  font-weight: 600;
+}
+
+.game-info-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  color: white;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.info-item i {
+  font-size: 1.5rem;
+  opacity: 0.9;
+}
+
+.info-item span {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .game-modes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .game-info-box {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

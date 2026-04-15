@@ -53,9 +53,10 @@ CREATE TABLE IF NOT EXISTS lessons (
     podcast_url VARCHAR(500) DEFAULT NULL,
     video_url VARCHAR(500) DEFAULT NULL,
     presentation_html LONGTEXT DEFAULT NULL,
+    presentation_pdf VARCHAR(500) DEFAULT NULL,
     is_open TINYINT(1) NOT NULL DEFAULT 0,
     sort_order INT NOT NULL DEFAULT 0,
-    game_type ENUM('mountain','maze','ship') NOT NULL DEFAULT 'mountain',
+    game_type ENUM('mountain','maze','ship','island') NOT NULL DEFAULT 'mountain',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
@@ -96,10 +97,25 @@ CREATE TABLE IF NOT EXISTS student_games (
     scholar_id INT DEFAULT NULL,
     attempts INT NOT NULL DEFAULT 1,
     completed TINYINT(1) NOT NULL DEFAULT 0,
+    game_mode VARCHAR(20) DEFAULT 'mountain',
     played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
     FOREIGN KEY (scholar_id) REFERENCES scholars(id) ON DELETE SET NULL
+);
+
+-- جدول تفاصيل إجابات الأسئلة
+CREATE TABLE IF NOT EXISTS question_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    question_id INT NOT NULL,
+    lesson_id INT NOT NULL,
+    is_correct TINYINT(1) NOT NULL DEFAULT 0,
+    attempts_count INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+    FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
 );
 
 -- جدول العلماء المكتشفين من الطالب
