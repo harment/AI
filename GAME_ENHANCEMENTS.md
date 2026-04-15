@@ -86,15 +86,29 @@
 
 ### 1. تحديث قاعدة البيانات
 
+**الخيار الأول: استخدام سكريبت الترحيل الآمن (موصى به)**
+
+هذا السكريبت يستخدم stored procedures للتحقق من وجود الأعمدة والفهارس قبل إضافتها (متوافق مع MySQL 5.5+):
+
 ```bash
 mysql -u username -p database_name < db/migration_enhanced_game.sql
 ```
 
-أو من خلال phpMyAdmin:
+**الخيار الثاني: السكريبت البسيط**
+
+إذا كنت تفضل عدم استخدام stored procedures، استخدم السكريبت البديل. قد يظهر بعض الأخطاء "Duplicate column/key" إذا كانت الأعمدة موجودة بالفعل، يمكنك تجاهلها:
+
+```bash
+mysql -u username -p database_name < db/migration_enhanced_game_simple.sql
+```
+
+**من خلال phpMyAdmin:**
 1. افتح قاعدة البيانات
 2. اذهب إلى تبويب SQL
-3. انسخ محتوى `migration_enhanced_game.sql` والصقه
+3. انسخ محتوى أحد ملفي الترحيل والصقه
 4. اضغط "تنفيذ"
+
+**ملاحظة مهمة:** إذا واجهت خطأ MySQL syntax مع `IF NOT EXISTS` في `ALTER TABLE`، استخدم `migration_enhanced_game_simple.sql` بدلاً من ذلك.
 
 ### 2. إضافة ملفات الأصوات
 

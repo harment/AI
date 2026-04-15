@@ -1,6 +1,6 @@
 -- =============================================
--- سكريبت تحديث قاعدة البيانات للنظام المحسّن
--- يُستخدم لتحديث قواعد البيانات الموجودة
+-- سكريبت تحديث بديل (بدون stored procedures)
+-- يُستخدم إذا كنت تفضل التشغيل اليدوي
 -- =============================================
 
 USE dhakali_db;
@@ -9,37 +9,15 @@ USE dhakali_db;
 ALTER TABLE lessons 
 MODIFY COLUMN game_type ENUM('mountain','maze','ship','island') NOT NULL DEFAULT 'mountain';
 
--- 2. إضافة عمود presentation_pdf إذا لم يكن موجوداً
--- استخدام stored procedure للتوافق مع MySQL القديم
-DELIMITER $$
-CREATE PROCEDURE AddColumnIfNotExists()
-BEGIN
-    -- إضافة presentation_pdf
-    IF NOT EXISTS (
-        SELECT * FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'lessons' 
-        AND COLUMN_NAME = 'presentation_pdf'
-    ) THEN
-        ALTER TABLE lessons 
-        ADD COLUMN presentation_pdf VARCHAR(500) DEFAULT NULL AFTER presentation_html;
-    END IF;
-    
-    -- إضافة game_mode
-    IF NOT EXISTS (
-        SELECT * FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'student_games' 
-        AND COLUMN_NAME = 'game_mode'
-    ) THEN
-        ALTER TABLE student_games 
-        ADD COLUMN game_mode VARCHAR(20) DEFAULT 'mountain' AFTER completed;
-    END IF;
-END$$
-DELIMITER ;
+-- 2. إضافة عمود presentation_pdf (قم بتشغيل هذا فقط إذا لم يكن العمود موجوداً)
+-- إذا حصلت على خطأ "Duplicate column name"، تجاهله واستمر
+ALTER TABLE lessons 
+ADD COLUMN presentation_pdf VARCHAR(500) DEFAULT NULL AFTER presentation_html;
 
-CALL AddColumnIfNotExists();
-DROP PROCEDURE IF EXISTS AddColumnIfNotExists;
+-- 3. إضافة عمود game_mode (قم بتشغيل هذا فقط إذا لم يكن العمود موجوداً)
+-- إذا حصلت على خطأ "Duplicate column name"، تجاهله واستمر
+ALTER TABLE student_games 
+ADD COLUMN game_mode VARCHAR(20) DEFAULT 'mountain' AFTER completed;
 
 -- 4. إنشاء جدول تفاصيل إجابات الأسئلة
 CREATE TABLE IF NOT EXISTS question_attempts (
@@ -59,51 +37,19 @@ CREATE TABLE IF NOT EXISTS question_attempts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. إضافة فهارس لتحسين الأداء
--- استخدام stored procedure للتوافق مع MySQL القديم
-DELIMITER $$
-CREATE PROCEDURE AddIndexesIfNotExists()
-BEGIN
-    -- إضافة idx_student_lesson_date
-    IF NOT EXISTS (
-        SELECT * FROM information_schema.STATISTICS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'student_games' 
-        AND INDEX_NAME = 'idx_student_lesson_date'
-    ) THEN
-        ALTER TABLE student_games 
-        ADD INDEX idx_student_lesson_date (student_id, lesson_id, played_at);
-    END IF;
-    
-    -- إضافة idx_played_at
-    IF NOT EXISTS (
-        SELECT * FROM information_schema.STATISTICS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'student_games' 
-        AND INDEX_NAME = 'idx_played_at'
-    ) THEN
-        ALTER TABLE student_games 
-        ADD INDEX idx_played_at (played_at);
-    END IF;
-END$$
-DELIMITER ;
+-- إذا حصلت على خطأ "Duplicate key name"، تجاهله واستمر
+ALTER TABLE student_games 
+ADD INDEX idx_student_lesson_date (student_id, lesson_id, played_at);
 
-CALL AddIndexesIfNotExists();
-DROP PROCEDURE IF EXISTS AddIndexesIfNotExists;
+ALTER TABLE student_games 
+ADD INDEX idx_played_at (played_at);
 
 -- 6. تحديث البيانات الموجودة
--- تعيين game_mode = 'mountain' للسجلات القديمة التي لا تحتوي على قيمة
 UPDATE student_games 
 SET game_mode = 'mountain' 
 WHERE game_mode IS NULL OR game_mode = '';
 
--- عرض ملخص التحديثات
-SELECT 
-    'تم تحديث قاعدة البيانات بنجاح' as status,
-    (SELECT COUNT(*) FROM question_attempts) as total_question_attempts,
-    (SELECT COUNT(*) FROM student_games) as total_games,
-    (SELECT COUNT(DISTINCT game_mode) FROM student_games) as game_modes_used;
-
--- إنشاء عرض (View) لتسهيل الاستعلامات الإحصائية
+-- 7. إنشاء عرض (View) لتسهيل الاستعلامات الإحصائية
 CREATE OR REPLACE VIEW v_question_difficulty AS
 SELECT 
     q.id as question_id,
@@ -125,7 +71,7 @@ FROM questions q
 LEFT JOIN question_attempts qa ON qa.question_id = q.id
 GROUP BY q.id, q.lesson_id, q.question_text;
 
--- إنشاء عرض لإحصائيات الطلاب
+-- 8. إنشاء عرض لإحصائيات الطلاب
 CREATE OR REPLACE VIEW v_student_performance AS
 SELECT 
     s.id as student_id,
@@ -141,7 +87,7 @@ LEFT JOIN student_games sg ON sg.student_id = s.id
 LEFT JOIN student_scholars ss ON ss.student_id = s.id
 GROUP BY s.id, s.name, s.points;
 
--- رسالة نهائية
+-- عرض ملخص التحديثات
 SELECT 
     '✅ تم تحديث قاعدة البيانات بنجاح!' as message,
     'تم إضافة:' as info,
@@ -150,3 +96,6 @@ SELECT
     '3. حد أقصى 3 محاولات يومياً' as feature_3,
     '4. تحليل صعوبة الأسئلة' as feature_4,
     '5. إحصائيات أداء محسّنة' as feature_5;
+
+-- ملاحظة: إذا حصلت على أخطاء "Duplicate column name" أو "Duplicate key name"،
+-- فهذا يعني أن العمود أو الفهرس موجود بالفعل ويمكنك تجاهل الخطأ والمتابعة.
