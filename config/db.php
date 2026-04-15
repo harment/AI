@@ -43,8 +43,12 @@ define('APP_URL',  (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SE
 define('APP_VERSION', '1.0.0');
 
 // مفاتيح الذكاء الاصطناعي (يُعدَّل حسب البيئة)
-define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
-define('OPENAI_API_KEY', getenv('OPENAI_API_KEY') ?: '');
+define('GEMINI_API_KEY',      getenv('GEMINI_API_KEY')      ?: '');
+define('OPENAI_API_KEY',      getenv('OPENAI_API_KEY')      ?: '');
+define('ANTHROPIC_API_KEY',   getenv('ANTHROPIC_API_KEY')   ?: '');
+define('GAMMA_API_KEY',       getenv('GAMMA_API_KEY')       ?: '');
+define('ELEVENLABS_API_KEY',  getenv('ELEVENLABS_API_KEY')  ?: '');  // ← جديد
+define('HEYGEN_API_KEY',      getenv('HEYGEN_API_KEY')      ?: '');  // ← جديد
 
 // إعدادات الجلسة
 define('SESSION_LIFETIME', 7200); // ساعتان
@@ -57,7 +61,7 @@ define('UPLOAD_URL', APP_URL . '/uploads/');
 function getDB(): PDO {
     static $pdo = null;
     if ($pdo === null) {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET . ";connect_timeout=5";
         $options = [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
