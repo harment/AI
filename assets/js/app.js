@@ -16,12 +16,19 @@ function initTabs() {
   document.querySelectorAll('[data-tab-target]').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.tabTarget;
-      const parent = btn.closest('[data-tabs]') || document;
-      parent.querySelectorAll('[data-tab-target]').forEach(b => b.classList.remove('active'));
-      parent.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      const tabsContainer = btn.closest('[data-tabs]') || document;
+
+      // Deactivate all buttons in this tab group
+      tabsContainer.querySelectorAll('[data-tab-target]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const pane = parent.querySelector('#' + target);
-      if (pane) pane.classList.add('active');
+
+      // Find the target pane via document (panes may live outside [data-tabs])
+      const pane = document.getElementById(target);
+      if (pane) {
+        // Deactivate all sibling panes
+        pane.parentElement?.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        pane.classList.add('active');
+      }
     });
   });
 
@@ -68,7 +75,7 @@ function initChatbot() {
   if (close) close.addEventListener('click', () => box.classList.remove('open'));
 
   // Welcome message
-  appendMsg('bot', 'مرحباً! أنا مساعدك الذّكاليّ 🌿 كيف يمكنني مساعدتك اليوم؟');
+  appendMsg('bot', 'مرحباً! أنا مساعدك الذّكاليّ � كيف يمكنني مساعدتك اليوم؟');
 
   const faq = {
     'كيف': 'يمكنك البدء بتسجيل الدخول ثم اختيار مقررك من القائمة الرئيسية.',
