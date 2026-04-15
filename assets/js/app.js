@@ -25,9 +25,19 @@ function initTabs() {
       // Find the target pane via document (panes may live outside [data-tabs])
       const pane = document.getElementById(target);
       if (pane) {
-        // Deactivate all sibling panes
-        pane.parentElement?.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        // Hide all sibling panes explicitly (belt-and-suspenders with CSS class)
+        pane.parentElement?.querySelectorAll('.tab-pane').forEach(p => {
+          p.classList.remove('active');
+          p.style.display = 'none';
+        });
+        // Show the target pane
         pane.classList.add('active');
+        pane.style.display = '';  // clear inline style, let CSS .tab-pane.active take over
+
+        // On mobile, scroll the tabs strip into view so user sees the content
+        if (window.innerWidth < 900) {
+          setTimeout(() => tabsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        }
       }
     });
   });

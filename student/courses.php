@@ -140,7 +140,13 @@ $pageTitle = $courseId ? clean($course['name']) : 'مقرراتي';
   <?php endif; ?>
 </main>
 
-<!-- Chatbot -->
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/student/dashboard.php"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+  <a href="/student/courses.php" class="active"><i class="fas fa-book-open"></i><span>مقرراتي</span></a>
+  <a href="/student/profile.php"><i class="fas fa-trophy"></i><span>نقاطي</span></a>
+  <a href="/api/auth.php?action=logout"><i class="fas fa-sign-out-alt"></i><span>خروج</span></a>
+</nav>
 <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></button>
 <div class="chatbot-box" id="chatbotBox">
   <div class="chatbot-header"><i class="fas fa-robot"></i><span class="chatbot-title">المساعد الذكي</span><button class="chatbot-close" id="chatbotClose"><i class="fas fa-times"></i></button></div>

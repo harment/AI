@@ -246,19 +246,153 @@ tbody tr + tr { border-top: 1px solid var(--border); }
 .ai-loader { text-align: center; padding: 3rem; }
 .ai-loader .spinner { width: 56px; height: 56px; border: 5px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
 
+/* ---- Dashboard layout grid ---- */
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: start; }
+
+/* ---- Mobile Bottom Navigation ---- */
+.mobile-bottom-nav { display: none; }
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(260px); }
-  .sidebar.open { transform: translateX(0); }
-  .main-content { margin-right: 0; padding: 1.2rem; }
-  .navbar { padding: .7rem 1rem; }
-  .options-grid { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
+  /* Sidebar */
+  .sidebar {
+    transform: translateX(260px);
+    z-index: 1200;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: -4px 0 24px rgba(0,0,0,.35);
+  }
+
+  /* Show sidebar toggle via CSS (overrides inline display:none) */
+  #sidebarToggle { display: block !important; }
+
+  /* Navbar */
+  .navbar { padding: .6rem 1rem; }
+  .navbar-brand { font-size: 1rem; }
+  .navbar-nav { display: none; }  /* bottom nav handles navigation on mobile */
+
+  /* Main content – leave room for bottom nav */
+  .main-content { margin-right: 0; padding: 1rem 1rem 5rem; }
+
+  /* Dashboard grid – single column on mobile */
+  .dashboard-grid { grid-template-columns: 1fr; }
+
+  /* Lesson tabs – horizontal scrollable strip */
+  .lesson-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 5px;
+    background: var(--card);
+    border-radius: var(--radius-sm);
+    border-bottom: none;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+    gap: 4px;
+  }
+  .lesson-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    min-width: max-content;
+    min-height: 44px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--border);
+    border-bottom: 2px solid var(--border);
+    font-size: .85rem;
+    padding: .45rem .9rem;
+  }
+  .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* Cards */
+  .card { padding: 1rem; }
+  .card:hover { transform: none; box-shadow: var(--shadow); } /* no hover lift on touch */
+
+  /* Stats */
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .stat-card { padding: 1rem .75rem; }
+  .stat-value { font-size: 1.6rem; }
+  .stat-icon { width: 46px; height: 46px; font-size: 1.2rem; }
+
+  /* Courses */
+  .courses-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Game */
+  .game-container { min-height: 380px; }
+  .game-question-box { padding: 1.25rem 1rem; max-width: 100%; width: 96%; }
+  .question-text { font-size: 1rem; }
+  .options-grid { grid-template-columns: 1fr; gap: .5rem; }
+  .option-btn { min-height: 44px; font-size: .92rem; }
+
+  /* PDF / video frames */
+  .pdf-frame { height: 420px; }
+  .interactive-presentation-frame { min-height: 450px !important; }
+  .video-embed-container { border-radius: var(--radius-sm); }
+
+  /* Audio player */
+  .audio-player { padding: 1rem; }
+
+  /* Tables */
+  th, td { padding: .6rem .75rem; font-size: .85rem; }
+
+  /* Chatbot – move above bottom nav */
+  .chatbot-toggle { bottom: 4.5rem; left: 1rem; width: 48px; height: 48px; font-size: 1.2rem; }
+  .chatbot-box { bottom: 7.5rem; left: 1rem; width: calc(100vw - 2rem); }
+
+  /* Modal */
+  .modal-box { max-width: 96%; }
+
+  /* Mobile bottom nav */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    height: 60px;
+    background: var(--dark);
+    z-index: 800;
+    border-top: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 -4px 16px rgba(0,0,0,.22);
+  }
+  .mobile-bottom-nav a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.5);
+    text-decoration: none;
+    font-size: .62rem;
+    gap: 3px;
+    padding: 8px 4px;
+    transition: var(--transition);
+    border-top: 3px solid transparent;
+  }
+  .mobile-bottom-nav a i { font-size: 1.15rem; }
+  .mobile-bottom-nav a.active { color: var(--primary-lt); border-top-color: var(--primary-lt); }
+  .mobile-bottom-nav a:hover { color: rgba(255,255,255,.85); }
+
+  /* Scholars grid */
+  .scholars-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
 }
+
 @media (max-width: 550px) {
-  .stats-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
   .courses-grid { grid-template-columns: 1fr; }
   .chatbot-box { width: calc(100vw - 2rem); left: 1rem; }
+
+  /* Navbar brand – hide text on very small screens */
+  .navbar-brand { gap: .45rem; font-size: .92rem; }
+
+  /* Headings */
+  h2 { font-size: 1.15rem; }
+  .btn-lg { padding: .75rem 1.5rem; font-size: 1rem; }
+
+  /* Scholar chips smaller */
+  .scholars-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .scholar-chip .icon { font-size: 2rem; }
 }
 
 /* ---- Animations ---- */

@@ -126,9 +126,9 @@ if (!empty($lesson['video_url'])) {
   .video-embed-container {
     position: relative;
     width: 100%;
-    max-width: 1280px; /* عرض 720p */
-    margin: 0 auto; /* توسيط */
-    aspect-ratio: 16 / 9; /* نسبة 16:9 */
+    max-width: 1280px;
+    margin: 0 auto;
+    aspect-ratio: 16 / 9;
     background: #000;
     border-radius: var(--radius-sm);
     overflow: hidden;
@@ -141,10 +141,10 @@ if (!empty($lesson['video_url'])) {
     height: 100%;
     border: none;
   }
-  @media (max-width: 768px) {
-    .video-embed-container {
-      max-width: 100%;
-    }
+  @media (max-width: 900px) {
+    .video-embed-container { max-width: 100%; border-radius: var(--radius-sm); }
+    .interactive-presentation-frame { min-height: 450px !important; }
+    .pdf-frame { height: 420px !important; }
   }
   @keyframes spin {
     from { transform: rotate(0deg); }
@@ -353,7 +353,13 @@ if (!empty($lesson['video_url'])) {
 
 </main>
 
-<!-- Chatbot -->
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/student/courses.php?id=<?= $lesson['course_id'] ?>"><i class="fas fa-arrow-right"></i><span>رجوع</span></a>
+  <a href="/student/dashboard.php"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+  <a href="/student/profile.php"><i class="fas fa-trophy"></i><span>نقاطي</span></a>
+  <a href="/api/auth.php?action=logout"><i class="fas fa-sign-out-alt"></i><span>خروج</span></a>
+</nav>
 <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></button>
 <div class="chatbot-box" id="chatbotBox">
   <div class="chatbot-header">

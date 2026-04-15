@@ -86,7 +86,7 @@ $leaderboard = getLeaderboard(5);
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start;">
+  <div class="dashboard-grid">
     <!-- Courses -->
     <div>
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
@@ -162,7 +162,13 @@ $leaderboard = getLeaderboard(5);
   </div>
 </main>
 
-<!-- Chatbot -->
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/student/dashboard.php" class="active"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+  <a href="/student/courses.php"><i class="fas fa-book-open"></i><span>مقرراتي</span></a>
+  <a href="/student/profile.php"><i class="fas fa-trophy"></i><span>نقاطي</span></a>
+  <a href="/api/auth.php?action=logout"><i class="fas fa-sign-out-alt"></i><span>خروج</span></a>
+</nav>
 <button class="chatbot-toggle" id="chatbotToggle" title="المساعد الذكي"><i class="fas fa-robot"></i></button>
 <div class="chatbot-box" id="chatbotBox">
   <div class="chatbot-header">

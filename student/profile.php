@@ -141,6 +141,14 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
   </div>
 </main>
 
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/student/dashboard.php"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+  <a href="/student/courses.php"><i class="fas fa-book-open"></i><span>مقرراتي</span></a>
+  <a href="/student/profile.php" class="active"><i class="fas fa-trophy"></i><span>نقاطي</span></a>
+  <a href="/api/auth.php?action=logout"><i class="fas fa-sign-out-alt"></i><span>خروج</span></a>
+</nav>
+
 <!-- Chatbot -->
 <button class="chatbot-toggle" id="chatbotToggle"><i class="fas fa-robot"></i></button>
 <div class="chatbot-box" id="chatbotBox">
