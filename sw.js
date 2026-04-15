@@ -30,7 +30,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch – cache-first for static, network-first for API/PHP
+// Fetch – cache-first for static, network-first for navigation/API/PHP
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -39,16 +39,30 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-first for PHP/API
-  if (url.pathname.endsWith('.php') || url.pathname.startsWith('/api/')) {
+  // Network-first for page navigations (e.g. /?page=login), PHP files, and API routes
+  if (
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.php') ||
+    url.pathname.startsWith('/api/')
+  ) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/'))
+      fetch(event.request).catch(() =>
+        caches.match('/').then(r => r || new Response('Service temporarily unavailable', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        }))
+      )
     );
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for static assets with error handling
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.match(event.request)
+      .then(cached => cached || fetch(event.request))
+      .catch(err => {
+        console.warn('[SW] Static asset fetch failed:', event.request.url, err);
+        return new Response('', { status: 503 });
+      })
   );
 });
