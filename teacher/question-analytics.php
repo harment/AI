@@ -49,19 +49,30 @@ if ($lessonId) {
     $lessonOverview->execute([$lessonId]);
     $overview = $lessonOverview->fetch();
     
-    // توزيع أنماط اللعبة المفضلة
-    $gameModes = $db->prepare("
-        SELECT 
-            game_mode,
-            COUNT(*) as plays,
-            SUM(completed) as completions
-        FROM student_games
-        WHERE lesson_id = ?
-        GROUP BY game_mode
-        ORDER BY plays DESC
-    ");
-    $gameModes->execute([$lessonId]);
-    $modeStats = $gameModes->fetchAll();
+    // توزيع أنماط اللعبة المفضلة (فقط إذا كان العمود موجوداً)
+    $modeStats = [];
+    try {
+        // التحقق من وجود عمود game_mode
+        $checkColumn = $db->query("SHOW COLUMNS FROM student_games LIKE 'game_mode'")->fetch();
+        
+        if ($checkColumn) {
+            $gameModes = $db->prepare("
+                SELECT 
+                    game_mode,
+                    COUNT(*) as plays,
+                    SUM(completed) as completions
+                FROM student_games
+                WHERE lesson_id = ?
+                GROUP BY game_mode
+                ORDER BY plays DESC
+            ");
+            $gameModes->execute([$lessonId]);
+            $modeStats = $gameModes->fetchAll();
+        }
+    } catch (Exception $e) {
+        // إذا فشل الاستعلام، استمر بدون إحصائيات أنماط اللعبة
+        $modeStats = [];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -93,6 +104,27 @@ if ($lessonId) {
     <h2><i class="fas fa-chart-line"></i> تحليل صعوبة الأسئلة</h2>
     <a href="/teacher/analytics.php" class="btn btn-outline"><i class="fas fa-arrow-right"></i> العودة</a>
   </div>
+
+  <?php
+  // التحقق من حاجة تحديث قاعدة البيانات
+  $needsMigration = false;
+  try {
+      $checkColumn = $db->query("SHOW COLUMNS FROM student_games LIKE 'game_mode'")->fetch();
+      if (!$checkColumn) {
+          $needsMigration = true;
+      }
+  } catch (Exception $e) {
+      $needsMigration = true;
+  }
+  
+  if ($needsMigration):
+  ?>
+  <div class="alert alert-warning" style="margin-bottom:1.5rem;">
+      <i class="fas fa-exclamation-triangle"></i>
+      <strong>تنبيه:</strong> قاعدة البيانات تحتاج إلى تحديث لعرض جميع الإحصائيات.
+      <br><small>يرجى تطبيق ملف <code>db/migration_enhanced_game_simple.sql</code> على قاعدة البيانات لإضافة ميزات التحليل المتقدمة.</small>
+  </div>
+  <?php endif; ?>
 
   <?php if (!$lessonId): ?>
   <!-- اختيار الدرس -->
