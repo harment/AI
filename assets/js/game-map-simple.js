@@ -88,8 +88,8 @@ class MapAdventureGame {
 
     const themeColors = {
       island: { primary: '#06b6d4', secondary: '#fbbf24', bg: 'linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #0891b2 100%)' },
-      mountain: { primary: '#6366f1', secondary: '#8b5cf6', bg: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 50%, #4f46e5 100%)' },
-      lake: { primary: '#3b82f6', secondary: '#60a5fa', bg: 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 50%, #2563eb 100%)' },
+      mountain: { primary: '#92400e', secondary: '#b45309', bg: 'linear-gradient(135deg, #b45309 0%, #92400e 50%, #78350f 100%)' },
+      lake: { primary: '#0284c7', secondary: '#0ea5e9', bg: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%)' },
       forest: { primary: '#10b981', secondary: '#34d399', bg: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%)' }
     };
     const theme = themeColors[this.mapTheme] || themeColors.island;
@@ -113,7 +113,7 @@ class MapAdventureGame {
       </div>
 
       <!-- Map Canvas -->
-      <div class="map-canvas" style="position: relative; width: 100%; height: 500px; background: ${theme.bg}; border-radius: 0 0 12px 12px; overflow: hidden;">
+      <div class="map-canvas" style="position: relative; width: 100%; height: 500px; overflow: hidden; border-radius: 0 0 12px 12px;">
         ${this._buildMapSVG()}
         ${this._buildMapPoints(characterIcon)}
       </div>
@@ -161,32 +161,63 @@ class MapAdventureGame {
       mountain: `
         <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
           <!-- Sky -->
-          <rect x="0" y="0" width="100" height="70" fill="#7c3aed" opacity="0.2"/>
-          <!-- Mountains -->
-          <polygon points="50,10 20,70 80,70" fill="#6366f1" opacity="0.4"/>
-          <polygon points="50,10 30,70 70,70" fill="#8b5cf6" opacity="0.5"/>
-          <!-- Snow peak -->
-          <polygon points="50,10 45,20 55,20" fill="white" opacity="0.8"/>
+          <rect x="0" y="0" width="100" height="70" fill="#93c5fd" opacity="0.3"/>
+          <!-- Main mountain - brown -->
+          <polygon points="50,10 15,70 85,70" fill="#92400e" opacity="0.7"/>
+          <polygon points="50,10 25,70 75,70" fill="#b45309" opacity="0.6"/>
+          <!-- Snow peak - white -->
+          <polygon points="50,10 42,25 58,25" fill="#ffffff" opacity="0.95"/>
+          <polygon points="50,10 45,20 55,20" fill="#f0f9ff" opacity="1"/>
           <!-- Ground -->
-          <rect x="0" y="70" width="100" height="30" fill="#10b981" opacity="0.3"/>
+          <rect x="0" y="70" width="100" height="30" fill="#22c55e" opacity="0.4"/>
           <!-- Trees at base -->
-          <circle cx="25" cy="85" r="3" fill="#059669" opacity="0.6"/>
-          <circle cx="75" cy="85" r="3" fill="#059669" opacity="0.6"/>
+          <circle cx="20" cy="82" r="4" fill="#15803d" opacity="0.7"/>
+          <circle cx="30" cy="85" r="3" fill="#15803d" opacity="0.7"/>
+          <circle cx="70" cy="85" r="3" fill="#15803d" opacity="0.7"/>
+          <circle cx="80" cy="82" r="4" fill="#15803d" opacity="0.7"/>
+          <!-- Rocks -->
+          <ellipse cx="40" cy="75" rx="5" ry="3" fill="#78716c" opacity="0.5"/>
+          <ellipse cx="60" cy="75" rx="4" ry="2" fill="#78716c" opacity="0.5"/>
         </svg>
       `,
       lake: `
         <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
-          <!-- Water -->
-          <ellipse cx="50" cy="50" rx="45" ry="40" fill="#3b82f6" opacity="0.4"/>
-          <!-- Islands -->
-          <ellipse cx="35" cy="50" rx="8" ry="6" fill="#10b981" opacity="0.6"/>
-          <ellipse cx="50" cy="35" rx="6" ry="5" fill="#10b981" opacity="0.6"/>
-          <ellipse cx="65" cy="50" rx="7" ry="5" fill="#10b981" opacity="0.6"/>
-          <!-- Shore -->
-          <ellipse cx="20" cy="70" rx="18" ry="12" fill="#059669" opacity="0.5"/>
-          <ellipse cx="80" cy="65" rx="15" ry="10" fill="#059669" opacity="0.5"/>
-          <!-- Waves -->
-          <path d="M 10,50 Q 20,45 30,50 T 50,50 T 70,50 T 90,50" fill="none" stroke="white" stroke-width="0.5" opacity="0.3"/>
+          <!-- Blue sea water -->
+          <rect x="0" y="0" width="100" height="100" fill="#0284c7" opacity="0.5"/>
+          <ellipse cx="50" cy="50" rx="48" ry="45" fill="#0ea5e9" opacity="0.4"/>
+          
+          <!-- Winding water path - lighter blue -->
+          <path d="M 20,70 Q 30,55 35,50 T 50,35 T 65,50 T 80,65" 
+                fill="none" 
+                stroke="#38bdf8" 
+                stroke-width="8" 
+                opacity="0.6"/>
+          
+          <!-- Small islands along the path -->
+          <ellipse cx="30" cy="60" rx="6" ry="5" fill="#16a34a" opacity="0.7"/>
+          <circle cx="31" cy="59" r="2" fill="#15803d" opacity="0.8"/>
+          
+          <ellipse cx="50" cy="35" rx="5" ry="4" fill="#16a34a" opacity="0.7"/>
+          <circle cx="50" cy="34" r="1.5" fill="#15803d" opacity="0.8"/>
+          
+          <ellipse cx="65" cy="50" rx="6" ry="4" fill="#16a34a" opacity="0.7"/>
+          <circle cx="66" cy="49" r="2" fill="#15803d" opacity="0.8"/>
+          
+          <!-- Shore at start and end -->
+          <ellipse cx="20" cy="70" rx="16" ry="10" fill="#15803d" opacity="0.6"/>
+          <ellipse cx="80" cy="65" rx="14" ry="9" fill="#15803d" opacity="0.6"/>
+          
+          <!-- Water waves -->
+          <path d="M 5,40 Q 15,35 25,40 T 45,40 T 65,40 T 85,40 T 100,40" 
+                fill="none" stroke="white" stroke-width="0.8" opacity="0.25"/>
+          <path d="M 0,60 Q 10,55 20,60 T 40,60 T 60,60 T 80,60 T 100,60" 
+                fill="none" stroke="white" stroke-width="0.8" opacity="0.25"/>
+          
+          <!-- Boat icon (will be animated by character) -->
+          <g id="boat-icon" opacity="0.4">
+            <ellipse cx="50" cy="50" rx="4" ry="2" fill="#78350f"/>
+            <polygon points="50,48 49,50 51,50" fill="#fef3c7"/>
+          </g>
         </svg>
       `,
       forest: `

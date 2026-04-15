@@ -324,97 +324,44 @@ if (!empty($lesson['video_url'])) {
       <?php else: ?>
       
       <!-- واجهة اختيار نمط اللعبة -->
-      <div id="gameModeSelector" style="padding:2rem;">
+      <div id="gameModeSelector" style="padding:2rem;max-width:1000px;margin:0 auto;">
         <div style="text-align:center;margin-bottom:2rem;">
-          <h2 style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;">🎮 اختر نمط مغامرتك</h2>
-          <p style="color:var(--muted);font-size:1.1rem;">اختر النمط الذي يناسبك لبدء رحلة التعلم</p>
+          <h2 style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;">🎮 اختر مغامرتك التعليمية</h2>
+          <p style="color:var(--muted);font-size:1.1rem;">اختر خريطة المغامرة التي تناسبك</p>
         </div>
         
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem;">
-          <!-- نمط الجبل -->
-          <div class="game-mode-card" data-mode="mountain" onclick="selectGameMode('mountain')">
-            <div style="font-size:4rem;margin-bottom:1rem;">⛰️</div>
-            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الجبل</div>
-            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">اصعد إلى القمة خطوة بخطوة</div>
-            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
-              <div style="padding:0.25rem 0;">✓ تحدي الصعود</div>
-              <div style="padding:0.25rem 0;">✓ محطات مثيرة</div>
-            </div>
-          </div>
-          
-          <!-- نمط المتاهة -->
-          <div class="game-mode-card" data-mode="maze" onclick="selectGameMode('maze')">
-            <div style="font-size:4rem;margin-bottom:1rem;">🗝️</div>
-            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة المتاهة</div>
-            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">اخرج من المتاهة بحل الألغاز</div>
-            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
-              <div style="padding:0.25rem 0;">✓ طريق متعرج</div>
-              <div style="padding:0.25rem 0;">✓ أسرار خفية</div>
-            </div>
-          </div>
-          
-          <!-- نمط الجزيرة -->
-          <div class="game-mode-card" data-mode="island" onclick="selectGameMode('island')">
+        <!-- ألعاب الخريطة البسيطة -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;margin-bottom:2rem;">
+          <!-- خريطة الجزيرة -->
+          <div class="game-mode-card" data-mode="map-island" onclick="selectGameMode('map-island')">
             <div style="font-size:4rem;margin-bottom:1rem;">🏝️</div>
             <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الجزيرة</div>
-            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">استكشف الجزيرة واكتشف الكنوز</div>
-            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
-              <div style="padding:0.25rem 0;">✓ استكشاف ممتع</div>
-              <div style="padding:0.25rem 0;">✓ كنوز معرفية</div>
-            </div>
+            <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.9rem;">استكشف الجزيرة عبر 5 نقاط</div>
+            <div style="font-size:0.85rem;color:#10b981;font-weight:600;margin-top:0.5rem;">✨ مغامرة ممتعة</div>
           </div>
           
-          <!-- نمط السفينة -->
-          <div class="game-mode-card" data-mode="ship" onclick="selectGameMode('ship')">
+          <!-- خريطة الجبل -->
+          <div class="game-mode-card" data-mode="map-mountain" onclick="selectGameMode('map-mountain')">
+            <div style="font-size:4rem;margin-bottom:1rem;">⛰️</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الجبل</div>
+            <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.9rem;">اصعد إلى القمة عبر 5 محطات</div>
+            <div style="font-size:0.85rem;color:#10b981;font-weight:600;margin-top:0.5rem;">✨ تحدي الصعود</div>
+          </div>
+          
+          <!-- خريطة البحيرة -->
+          <div class="game-mode-card" data-mode="map-lake" onclick="selectGameMode('map-lake')">
             <div style="font-size:4rem;margin-bottom:1rem;">⛵</div>
-            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الإبحار</div>
-            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">أبحر عبر البحر حتى الميناء</div>
-            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
-              <div style="padding:0.25rem 0;">✓ رحلة بحرية</div>
-              <div style="padding:0.25rem 0;">✓ أمواج المعرفة</div>
-            </div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة البحر</div>
+            <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.9rem;">أبحر في البحر عبر 5 نقاط</div>
+            <div style="font-size:0.85rem;color:#10b981;font-weight:600;margin-top:0.5rem;">✨ رحلة بحرية</div>
           </div>
-        </div>
-        
-        <!-- قسم خاص: الألعاب البسيطة المبنية على الخريطة -->
-        <div style="margin:2rem 0;">
-          <h3 style="color:var(--primary);text-align:center;margin-bottom:1rem;">🗺️ ألعاب الخريطة البسيطة (جديد!)</h3>
-          <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem;font-size:0.95rem;">
-            مغامرة من 5 نقاط فقط على خريطة مرسومة جميلة
-          </p>
           
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
-            <!-- خريطة الجزيرة -->
-            <div class="game-mode-card" data-mode="map-island" onclick="selectGameMode('map-island')">
-              <div style="font-size:3.5rem;margin-bottom:1rem;">🏝️</div>
-              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الجزيرة</div>
-              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • رحلة قصيرة</div>
-              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
-            </div>
-            
-            <!-- خريطة الجبل -->
-            <div class="game-mode-card" data-mode="map-mountain" onclick="selectGameMode('map-mountain')">
-              <div style="font-size:3.5rem;margin-bottom:1rem;">⛰️</div>
-              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الجبل</div>
-              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • صعود القمة</div>
-              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
-            </div>
-            
-            <!-- خريطة البحيرة -->
-            <div class="game-mode-card" data-mode="map-lake" onclick="selectGameMode('map-lake')">
-              <div style="font-size:3.5rem;margin-bottom:1rem;">🏊‍♂️</div>
-              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة البحيرة</div>
-              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • رحلة مائية</div>
-              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
-            </div>
-            
-            <!-- خريطة الغابة -->
-            <div class="game-mode-card" data-mode="map-forest" onclick="selectGameMode('map-forest')">
-              <div style="font-size:3.5rem;margin-bottom:1rem;">🌲</div>
-              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الغابة</div>
-              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • طريق الحكمة</div>
-              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
-            </div>
+          <!-- خريطة الغابة -->
+          <div class="game-mode-card" data-mode="map-forest" onclick="selectGameMode('map-forest')">
+            <div style="font-size:4rem;margin-bottom:1rem;">🌲</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الغابة</div>
+            <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.9rem;">اكتشف الغابة عبر 5 نقاط</div>
+            <div style="font-size:0.85rem;color:#10b981;font-weight:600;margin-top:0.5rem;">✨ طريق الحكمة</div>
           </div>
         </div>
         
