@@ -391,7 +391,7 @@
   position: relative;
   min-height: 600px;
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;

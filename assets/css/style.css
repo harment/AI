@@ -161,7 +161,7 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .tab-pane.active { display: block; animation: fadeIn .3s ease; }
 
 /* ---- Game ---- */
-.game-container { background: linear-gradient(135deg, #0d1b2a 0%, #1b4332 100%); border-radius: var(--radius); min-height: 520px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.game-container { background: linear-gradient(135deg, #0d1b2a 0%, #1b4332 100%); border-radius: var(--radius); min-height: 520px; position: relative; overflow: visible; display: flex; align-items: center; justify-content: center; }
 .mountain-bg    { position: absolute; inset: 0; background-image: url('../images/mountain.svg'); background-size: cover; background-position: bottom; opacity: .35; }
 .game-question-box { background: rgba(255,255,255,.95); border-radius: var(--radius); padding: 2rem; max-width: 520px; width: 90%; position: relative; z-index: 10; box-shadow: 0 8px 40px rgba(0,0,0,.4); animation: slideUp .4s ease; }
 .question-text  { font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--dark); line-height: 1.6; }
