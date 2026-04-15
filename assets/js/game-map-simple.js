@@ -17,6 +17,7 @@ class MapAdventureGame {
     this.showingQuestion  = false;
     this.questionResults  = [];
     this.BASE_PTS         = options.basePoints || 350;
+    this.eventListenersAttached = false; // Track if listeners are attached
     
     this.sounds           = {
       correct : new Audio('/assets/sounds/correct.mp3'),
@@ -75,7 +76,10 @@ class MapAdventureGame {
   render() {
     if (!this.container) return;
     this.container.innerHTML = this._buildGameUI();
-    this._attachEventListeners();
+    if (!this.eventListenersAttached) {
+      this._attachEventListeners();
+      this.eventListenersAttached = true;
+    }
   }
 
   _buildGameUI() {
@@ -325,11 +329,14 @@ class MapAdventureGame {
   }
 
   _attachEventListeners() {
-    // Click on current point to show question
-    const points = this.container.querySelectorAll('.map-point');
-    points.forEach((point, index) => {
-      if (index === this.current) {
-        point.addEventListener('click', () => this._showQuestion(this.current));
+    // Click on current point to show question using event delegation
+    this.container.addEventListener('click', (e) => {
+      const point = e.target.closest('.map-point');
+      if (point) {
+        const index = parseInt(point.dataset.index);
+        if (index === this.current && !this.showingQuestion) {
+          this._showQuestion(this.current);
+        }
       }
     });
   }
