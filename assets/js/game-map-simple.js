@@ -85,7 +85,7 @@ class MapAdventureGame {
     try {
       this.container.innerHTML = this._buildGameUI();
     } catch (e) {
-      console.error('Error rendering game UI:', e && e.message ? e.message : e);
+      console.error('Error rendering game UI:', e?.message || e);
       this.container.innerHTML = '<div style="padding:2rem;text-align:center;color:#ef4444;">حدث خطأ في تحميل اللعبة. يرجى إعادة تحميل الصفحة.</div>';
       return;
     }
