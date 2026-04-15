@@ -376,6 +376,48 @@ if (!empty($lesson['video_url'])) {
           </div>
         </div>
         
+        <!-- قسم خاص: الألعاب البسيطة المبنية على الخريطة -->
+        <div style="margin:2rem 0;">
+          <h3 style="color:var(--primary);text-align:center;margin-bottom:1rem;">🗺️ ألعاب الخريطة البسيطة (جديد!)</h3>
+          <p style="text-align:center;color:var(--muted);margin-bottom:1.5rem;font-size:0.95rem;">
+            مغامرة من 5 نقاط فقط على خريطة مرسومة جميلة
+          </p>
+          
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+            <!-- خريطة الجزيرة -->
+            <div class="game-mode-card" data-mode="map-island" onclick="selectGameMode('map-island')">
+              <div style="font-size:3.5rem;margin-bottom:1rem;">🏝️</div>
+              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الجزيرة</div>
+              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • رحلة قصيرة</div>
+              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
+            </div>
+            
+            <!-- خريطة الجبل -->
+            <div class="game-mode-card" data-mode="map-mountain" onclick="selectGameMode('map-mountain')">
+              <div style="font-size:3.5rem;margin-bottom:1rem;">⛰️</div>
+              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الجبل</div>
+              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • صعود القمة</div>
+              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
+            </div>
+            
+            <!-- خريطة البحيرة -->
+            <div class="game-mode-card" data-mode="map-lake" onclick="selectGameMode('map-lake')">
+              <div style="font-size:3.5rem;margin-bottom:1rem;">🏊‍♂️</div>
+              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة البحيرة</div>
+              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • رحلة مائية</div>
+              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
+            </div>
+            
+            <!-- خريطة الغابة -->
+            <div class="game-mode-card" data-mode="map-forest" onclick="selectGameMode('map-forest')">
+              <div style="font-size:3.5rem;margin-bottom:1rem;">🌲</div>
+              <div style="font-size:1.2rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">خريطة الغابة</div>
+              <div style="color:var(--muted);margin-bottom:0.5rem;font-size:0.85rem;">5 نقاط • طريق الحكمة</div>
+              <div style="font-size:0.8rem;color:#10b981;font-weight:600;">✨ بسيطة وممتعة</div>
+            </div>
+          </div>
+        </div>
+        
         <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;color:white;">
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <i class="fas fa-question-circle" style="font-size:1.5rem;"></i>
@@ -425,6 +467,7 @@ if (!empty($lesson['video_url'])) {
 
 <script src="/assets/js/app.js"></script>
 <script src="/assets/js/game-enhanced.js"></script>
+<script src="/assets/js/game-map-simple.js"></script>
 <style>
 .game-mode-card {
   background: white;
@@ -542,13 +585,26 @@ async function selectGameMode(mode) {
 }
 
 function launchGameWithMode(mode) {
-  adventureGame = new AdventureGame({
-    lessonId: LESSON_ID,
-    gameType: mode,
-    questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
-    scholars: SCHOLARS,
-    containerId: 'gameContainer',
-  });
+  // التحقق إذا كان النمط خريطة بسيطة
+  if (mode.startsWith('map-')) {
+    const mapTheme = mode.replace('map-', ''); // island, mountain, lake, forest
+    adventureGame = new MapAdventureGame({
+      lessonId: LESSON_ID,
+      mapTheme: mapTheme,
+      questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
+      scholars: SCHOLARS,
+      containerId: 'gameContainer',
+    });
+  } else {
+    // استخدام اللعبة التقليدية
+    adventureGame = new AdventureGame({
+      lessonId: LESSON_ID,
+      gameType: mode,
+      questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
+      scholars: SCHOLARS,
+      containerId: 'gameContainer',
+    });
+  }
   window.adventureGame = adventureGame;
   adventureGame.start();
 }
