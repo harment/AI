@@ -25,6 +25,7 @@ $difficultQuestions = $db->query("
     SELECT 
         q.id,
         q.question_text,
+        l.id as lesson_id,
         l.name as lesson_name,
         COUNT(qa.id) as total_attempts,
         SUM(CASE WHEN qa.is_correct = 1 THEN 1 ELSE 0 END) as correct_attempts,
@@ -33,7 +34,7 @@ $difficultQuestions = $db->query("
     LEFT JOIN question_attempts qa ON qa.question_id = q.id
     LEFT JOIN lessons l ON l.id = q.lesson_id
     WHERE qa.id IS NOT NULL
-    GROUP BY q.id, q.question_text, l.name
+    GROUP BY q.id, q.question_text, l.id, l.name
     HAVING success_rate < 50 OR success_rate IS NULL
     ORDER BY success_rate ASC, total_attempts DESC
     LIMIT 10
@@ -64,6 +65,7 @@ $difficultLessons = $db->query("
     SELECT 
         l.id,
         l.name,
+        c.id as course_id,
         c.name as course_name,
         COUNT(DISTINCT sg.student_id) as students_count,
         COUNT(sg.id) as total_plays,
@@ -74,7 +76,7 @@ $difficultLessons = $db->query("
     LEFT JOIN courses c ON c.id = l.course_id
     LEFT JOIN student_games sg ON sg.lesson_id = l.id
     WHERE sg.id IS NOT NULL AND l.is_open = 1
-    GROUP BY l.id, l.name, c.name
+    GROUP BY l.id, l.name, c.id, c.name
     ORDER BY completion_rate ASC, avg_points ASC
     LIMIT 5
 ")->fetchAll();
@@ -82,7 +84,9 @@ $difficultLessons = $db->query("
 // 4. نقاط الضعف العامة - تحليل الموضوعات
 $weaknessAnalysis = $db->query("
     SELECT 
+        q.id,
         q.question_text,
+        l.id as lesson_id,
         l.name as topic,
         COUNT(DISTINCT qa.student_id) as students_affected,
         COUNT(qa.id) as total_wrong_attempts
@@ -90,7 +94,7 @@ $weaknessAnalysis = $db->query("
     JOIN questions q ON q.id = qa.question_id
     JOIN lessons l ON l.id = qa.lesson_id
     WHERE qa.is_correct = 0
-    GROUP BY q.id, q.question_text, l.name
+    GROUP BY q.id, q.question_text, l.id, l.name
     ORDER BY students_affected DESC, total_wrong_attempts DESC
     LIMIT 8
 ")->fetchAll();
