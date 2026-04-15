@@ -17,7 +17,6 @@ class MapAdventureGame {
     this.showingQuestion  = false;
     this.questionResults  = [];
     this.BASE_PTS         = options.basePoints || 350;
-    this.eventListenersAttached = false; // Track if listeners are attached
     
     this.sounds           = {
       correct : new Audio('/assets/sounds/correct.mp3'),
@@ -78,33 +77,14 @@ class MapAdventureGame {
       console.error('Game container not found');
       return;
     }
-    
+
     console.log('Rendering game UI...');
-    // Clear container first to remove any stale content (e.g. old result overlay)
     this.container.innerHTML = '';
     try {
       this.container.innerHTML = this._buildGameUI();
     } catch (e) {
       console.error('Error rendering game UI:', e?.message || e);
       this.container.innerHTML = '<div style="padding:2rem;text-align:center;color:#ef4444;">حدث خطأ في تحميل اللعبة. يرجى إعادة تحميل الصفحة.</div>';
-      return;
-    }
-    
-    // Attach click handler directly to the current map point for reliable interaction
-    const currentPoint = this.container.querySelector('.map-point.current');
-    if (currentPoint) {
-      currentPoint.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (!this.showingQuestion) {
-          this._showQuestion(this.current);
-        }
-      });
-    }
-    
-    if (!this.eventListenersAttached) {
-      console.log('Attaching event listeners...');
-      this._attachEventListeners();
-      this.eventListenersAttached = true;
     }
   }
 
@@ -282,52 +262,71 @@ class MapAdventureGame {
       <polyline points="${pathPoints}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.3" stroke-dasharray="1,1"/>
     </svg>`;
     
-    // Draw points
+    // Draw points – current point uses a <button> with inline onclick (mirrors TSX approach)
     this.mapPoints.forEach((point, index) => {
       const isCompleted = index < this.current;
       const isCurrent = index === this.current;
-      const isLocked = index > this.current;
       
       const bgColor = isCompleted ? '#10b981' : isCurrent ? '#fbbf24' : '#94a3b8';
       const borderColor = isCurrent ? 'white' : 'rgba(255,255,255,0.5)';
-      const cursor = isCurrent ? 'pointer' : 'default';
       const animation = isCurrent ? 'map-point-pulse 2s infinite' : 'none';
-      const pointerEvents = isCurrent ? 'auto' : 'none';
       
+      const commonStyle = `position: absolute;
+                     left: ${point.x}%;
+                     top: ${point.y}%;
+                     transform: translate(-50%, -50%);
+                     width: 40px;
+                     height: 40px;
+                     background: ${bgColor};
+                     border: 3px solid ${borderColor};
+                     border-radius: 50%;
+                     display: flex;
+                     align-items: center;
+                     justify-content: center;
+                     font-weight: 700;
+                     color: white;
+                     font-size: 1.1rem;
+                     z-index: 20;
+                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                     animation: ${animation};
+                     transition: all 0.3s ease;`;
+
+      if (isCurrent) {
+        // <button> with inline onclick – direct binding like the TSX reference
+        html += `
+          <button class="map-point current"
+                  data-index="${index}"
+                  onclick="var g=window.adventureGame;if(g&&!g.showingQuestion)g._showQuestion(g.current);"
+                  style="${commonStyle}
+                     cursor: pointer;
+                     pointer-events: auto;
+                     padding: 0;
+                     outline: none;
+                     appearance: none;
+                     -webkit-appearance: none;
+                     font-family: inherit;">
+            ${index + 1}
+          </button>`;
+      } else {
+        html += `
+          <div class="map-point"
+               data-index="${index}"
+               style="${commonStyle}
+                     cursor: default;
+                     pointer-events: none;">
+            ${isCompleted ? '✓' : index + 1}
+          </div>`;
+      }
+
       html += `
-        <div class="map-point ${isCurrent ? 'current' : ''}" 
-             data-index="${index}"
-             style="position: absolute; 
-                    left: ${point.x}%; 
-                    top: ${point.y}%; 
-                    transform: translate(-50%, -50%);
-                    width: 40px; 
-                    height: 40px; 
-                    background: ${bgColor}; 
-                    border: 3px solid ${borderColor}; 
-                    border-radius: 50%; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    font-weight: 700; 
-                    color: white; 
-                    font-size: 1.1rem;
-                    cursor: ${cursor};
-                    pointer-events: ${pointerEvents};
-                    z-index: ${isCurrent ? 20 : 10};
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    animation: ${animation};
-                    transition: all 0.3s ease;">
-          ${isCompleted ? '✓' : index + 1}
-        </div>
-        <div style="position: absolute; 
-                    left: ${point.x}%; 
-                    top: calc(${point.y}% + 30px); 
+        <div style="position: absolute;
+                    left: ${point.x}%;
+                    top: calc(${point.y}% + 30px);
                     transform: translateX(-50%);
-                    background: rgba(0,0,0,0.7); 
-                    color: white; 
-                    padding: 0.3rem 0.6rem; 
-                    border-radius: 6px; 
+                    background: rgba(0,0,0,0.7);
+                    color: white;
+                    padding: 0.3rem 0.6rem;
+                    border-radius: 6px;
                     font-size: 0.75rem;
                     white-space: nowrap;
                     z-index: 15;
@@ -337,16 +336,17 @@ class MapAdventureGame {
       `;
     });
     
-    // Character position
+    // Character – pointer-events:none so it never intercepts clicks on the point below
     const charPoint = this.mapPoints[this.current];
     html += `
-      <div id="gameCharacter" 
-           style="position: absolute; 
-                  left: ${charPoint.x}%; 
-                  top: calc(${charPoint.y}% - 50px); 
+      <div id="gameCharacter"
+           style="position: absolute;
+                  left: ${charPoint.x}%;
+                  top: calc(${charPoint.y}% - 50px);
                   transform: translateX(-50%);
-                  font-size: 2.5rem; 
+                  font-size: 2.5rem;
                   z-index: 25;
+                  pointer-events: none;
                   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
                   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);">
         ${characterIcon}
@@ -354,22 +354,6 @@ class MapAdventureGame {
     `;
     
     return html;
-  }
-
-  _attachEventListeners() {
-    console.log('_attachEventListeners called');
-    // Click on current point to show question using event delegation
-    this.container.addEventListener('click', (e) => {
-      console.log('Container clicked', e.target);
-      const point = e.target.closest('.map-point');
-      if (point) {
-        const index = parseInt(point.dataset.index);
-        console.log('Point clicked:', index, 'Current:', this.current);
-        if (index === this.current && !this.showingQuestion) {
-          this._showQuestion(this.current);
-        }
-      }
-    });
   }
 
   start() {
