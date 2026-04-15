@@ -80,7 +80,26 @@ class MapAdventureGame {
     }
     
     console.log('Rendering game UI...');
-    this.container.innerHTML = this._buildGameUI();
+    // Clear container first to remove any stale content (e.g. old result overlay)
+    this.container.innerHTML = '';
+    try {
+      this.container.innerHTML = this._buildGameUI();
+    } catch (e) {
+      console.error('Error rendering game UI:', e && e.message ? e.message : e);
+      this.container.innerHTML = '<div style="padding:2rem;text-align:center;color:#ef4444;">حدث خطأ في تحميل اللعبة. يرجى إعادة تحميل الصفحة.</div>';
+      return;
+    }
+    
+    // Attach click handler directly to the current map point for reliable interaction
+    const currentPoint = this.container.querySelector('.map-point.current');
+    if (currentPoint) {
+      currentPoint.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!this.showingQuestion) {
+          this._showQuestion(this.current);
+        }
+      });
+    }
     
     if (!this.eventListenersAttached) {
       console.log('Attaching event listeners...');
@@ -124,7 +143,7 @@ class MapAdventureGame {
       </div>
 
       <!-- Map Canvas -->
-      <div class="map-canvas" style="position: relative; width: 100%; height: 500px; overflow: hidden; border-radius: 0 0 12px 12px;">
+      <div class="map-canvas" style="position: relative; width: 100%; height: 500px; overflow: visible; border-radius: 0 0 12px 12px;">
         ${this._buildMapSVG()}
         ${this._buildMapPoints(characterIcon)}
       </div>
@@ -152,7 +171,7 @@ class MapAdventureGame {
   _buildMapSVG() {
     const svgMaps = {
       island: `
-        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
+        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;" pointer-events="none">
           <!-- Sea -->
           <rect x="0" y="0" width="100" height="100" fill="#0ea5e9" opacity="0.3"/>
           <!-- Island -->
@@ -170,7 +189,7 @@ class MapAdventureGame {
         </svg>
       `,
       mountain: `
-        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
+        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;" pointer-events="none">
           <!-- Sky -->
           <rect x="0" y="0" width="100" height="70" fill="#93c5fd" opacity="0.3"/>
           <!-- Main mountain - brown -->
@@ -192,7 +211,7 @@ class MapAdventureGame {
         </svg>
       `,
       lake: `
-        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
+        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;" pointer-events="none">
           <!-- Blue sea water -->
           <rect x="0" y="0" width="100" height="100" fill="#0284c7" opacity="0.5"/>
           <ellipse cx="50" cy="50" rx="48" ry="45" fill="#0ea5e9" opacity="0.4"/>
@@ -224,15 +243,15 @@ class MapAdventureGame {
           <path d="M 0,60 Q 10,55 20,60 T 40,60 T 60,60 T 80,60 T 100,60" 
                 fill="none" stroke="white" stroke-width="0.8" opacity="0.25"/>
           
-          <!-- Boat icon (will be animated by character) -->
-          <g id="boat-icon" opacity="0.4">
+          <!-- Boat icon -->
+          <g opacity="0.4">
             <ellipse cx="50" cy="50" rx="4" ry="2" fill="#78350f"/>
             <polygon points="50,48 49,50 51,50" fill="#fef3c7"/>
           </g>
         </svg>
       `,
       forest: `
-        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;">
+        <svg viewBox="0 0 100 100" style="position: absolute; width: 100%; height: 100%; z-index: 1;" pointer-events="none">
           <!-- Forest background -->
           <rect x="0" y="0" width="100" height="100" fill="#059669" opacity="0.2"/>
           <!-- Trees -->
@@ -609,95 +628,11 @@ class MapAdventureGame {
   }
 }
 
-// CSS Styles
+// CSS Styles - only properties not already in game-enhanced.css
 const mapGameStyles = document.createElement('style');
 mapGameStyles.textContent = `
-  .map-game-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-  }
-
-  .map-canvas {
-    position: relative;
-  }
-
-  .question-popup {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-
   .question-popup-content {
-    background: white;
-    border-radius: 12px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     animation: slideUp 0.3s ease;
-  }
-
-  .options-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-
-  .option-btn {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    text-align: right;
-  }
-
-  .option-btn:hover:not(:disabled) {
-    transform: translateX(-4px);
-  }
-
-  .game-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 150;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes map-point-pulse {
-    0%, 100% {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 0 rgba(251, 191, 36, 0.7);
-    }
-    50% {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 10px rgba(251, 191, 36, 0);
-    }
   }
 `;
 document.head.appendChild(mapGameStyles);
