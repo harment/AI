@@ -316,7 +316,7 @@ class AdventureGame {
   }
 
   _saveResult(won, pts, scholarId) {
-    fetch('/api/games.php', {
+    fetch('/api/games-enhanced.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 

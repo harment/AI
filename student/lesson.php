@@ -151,6 +151,7 @@ if (!empty($lesson['video_url'])) {
     to { transform: rotate(360deg); }
   }
   </style>
+  <link rel="stylesheet" href="/assets/css/game-enhanced.css">
 </head>
 <body data-lesson-id="<?= $lessonId ?>">
 <nav class="navbar">
@@ -307,14 +308,7 @@ if (!empty($lesson['video_url'])) {
     <div class="card">
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
         <div class="card-title">
-          <?php
-            $gameIcons = [
-              'mountain' => '⛰️ مغامرة الجبل',
-              'maze' => '� مغامرة المتاهة',
-              'ship' => '⛵ مغامرة البحر'
-            ];
-            echo $gameIcons[$lesson['game_type']] ?? '� لعبة المغامرة';
-          ?>
+          <i class="fas fa-gamepad" style="color:var(--accent);"></i> لعبة المغامرة التعليمية
         </div>
         <?php if (!empty($questions)): ?>
         <button class="btn btn-primary btn-sm" id="startGameBtn">
@@ -328,24 +322,85 @@ if (!empty($lesson['video_url'])) {
           <i class="fas fa-exclamation-triangle"></i> لم تُضَف أسئلة لهذا الدرس بعد.
         </div>
       <?php else: ?>
-      <div id="gameIntro" style="text-align:center;padding:2rem;">
-        <div style="font-size:4rem;margin-bottom:1rem;">
-          <?= ['mountain' => '⛰️', 'maze' => '�', 'ship' => '⛵'][$lesson['game_type']] ?? '�' ?>
+      
+      <!-- واجهة اختيار نمط اللعبة -->
+      <div id="gameModeSelector" style="padding:2rem;">
+        <div style="text-align:center;margin-bottom:2rem;">
+          <h2 style="font-size:2rem;color:var(--primary);margin-bottom:0.5rem;">🎮 اختر نمط مغامرتك</h2>
+          <p style="color:var(--muted);font-size:1.1rem;">اختر النمط الذي يناسبك لبدء رحلة التعلم</p>
         </div>
-        <h3 style="margin-bottom:.75rem;">مغامرة <?= clean($lesson['name']) ?></h3>
-        <p style="color:var(--muted);max-width:480px;margin:0 auto 1.5rem;">
-          أجب على <strong><?= count($questions) ?></strong> سؤال لتصعد إلى القمة واكسب النقاط واكتشف عالماً من علماء النحو!
-          <br>تحذير: لكل سؤال محاولتان – ستظهر لك التغذية الراجعة الصحيحة عند الخطأ مرتين.
-        </p>
-        <div style="display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap;">
-          <div class="badge badge-primary"><i class="fas fa-star"></i> حتى 350 نقطة</div>
-          <div class="badge badge-accent"><i class="fas fa-scroll"></i> اكتشف عالم نحو</div>
-          <div class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> محاولتان لكل سؤال</div>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:2rem;">
+          <!-- نمط الجبل -->
+          <div class="game-mode-card" data-mode="mountain" onclick="selectGameMode('mountain')">
+            <div style="font-size:4rem;margin-bottom:1rem;">⛰️</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الجبل</div>
+            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">اصعد إلى القمة خطوة بخطوة</div>
+            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
+              <div style="padding:0.25rem 0;">✓ تحدي الصعود</div>
+              <div style="padding:0.25rem 0;">✓ محطات مثيرة</div>
+            </div>
+          </div>
+          
+          <!-- نمط المتاهة -->
+          <div class="game-mode-card" data-mode="maze" onclick="selectGameMode('maze')">
+            <div style="font-size:4rem;margin-bottom:1rem;">🗝️</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة المتاهة</div>
+            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">اخرج من المتاهة بحل الألغاز</div>
+            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
+              <div style="padding:0.25rem 0;">✓ طريق متعرج</div>
+              <div style="padding:0.25rem 0;">✓ أسرار خفية</div>
+            </div>
+          </div>
+          
+          <!-- نمط الجزيرة -->
+          <div class="game-mode-card" data-mode="island" onclick="selectGameMode('island')">
+            <div style="font-size:4rem;margin-bottom:1rem;">🏝️</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الجزيرة</div>
+            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">استكشف الجزيرة واكتشف الكنوز</div>
+            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
+              <div style="padding:0.25rem 0;">✓ استكشاف ممتع</div>
+              <div style="padding:0.25rem 0;">✓ كنوز معرفية</div>
+            </div>
+          </div>
+          
+          <!-- نمط السفينة -->
+          <div class="game-mode-card" data-mode="ship" onclick="selectGameMode('ship')">
+            <div style="font-size:4rem;margin-bottom:1rem;">⛵</div>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-bottom:0.5rem;">مغامرة الإبحار</div>
+            <div style="color:var(--muted);margin-bottom:1rem;font-size:0.95rem;">أبحر عبر البحر حتى الميناء</div>
+            <div style="margin-bottom:1rem;text-align:right;font-size:0.9rem;">
+              <div style="padding:0.25rem 0;">✓ رحلة بحرية</div>
+              <div style="padding:0.25rem 0;">✓ أمواج المعرفة</div>
+            </div>
+          </div>
         </div>
-        <button class="btn btn-primary btn-lg" style="margin-top:2rem;" onclick="launchGame()">
-          <i class="fas fa-rocket"></i> ابدأ المغامرة!
-        </button>
+        
+        <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;padding:1.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;color:white;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-question-circle" style="font-size:1.5rem;"></i>
+            <span><strong>5 أسئلة</strong> في كل مغامرة</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-redo" style="font-size:1.5rem;"></i>
+            <span><strong>3 محاولات</strong> يومياً</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-star" style="font-size:1.5rem;"></i>
+            <span>حتى <strong>350 نقطة</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-user-graduate" style="font-size:1.5rem;"></i>
+            <span>اكتشف <strong>العلماء</strong></span>
+          </div>
+        </div>
+        
+        <div id="attemptsWarning" class="alert alert-warning" style="display:none;margin-top:1rem;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <strong>تنبيه:</strong> <span id="attemptsMessage"></span>
+        </div>
       </div>
+      
       <div id="gameContainer" class="game-container" style="display:none;"></div>
       <?php endif; ?>
     </div>
@@ -369,25 +424,128 @@ if (!empty($lesson['video_url'])) {
 </div>
 
 <script src="/assets/js/app.js"></script>
-<script src="/assets/js/game.js"></script>
+<script src="/assets/js/game-enhanced.js"></script>
+<style>
+.game-mode-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.game-mode-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-color: var(--primary);
+}
+</style>
 <script>
 if (window.innerWidth < 900) document.getElementById('sidebarToggle').style.display = 'block';
 
 const QUESTIONS = <?= json_encode($questions, JSON_UNESCAPED_UNICODE) ?>;
 const SCHOLARS  = <?= json_encode($scholars,  JSON_UNESCAPED_UNICODE) ?>;
 const LESSON_ID = <?= $lessonId ?>;
-const GAME_TYPE = '<?= $lesson['game_type'] ?>';
 
 let adventureGame = null;
 window.adventureGame = null;
+let selectedGameMode = 'mountain';
 
-function launchGame() {
-  document.getElementById('gameIntro').style.display    = 'none';
-  document.getElementById('gameContainer').style.display = 'flex';
+// التحقق من المحاولات المتاحة عند تحميل الصفحة
+async function checkAttempts() {
+  try {
+    const response = await fetch(`/api/games-enhanced.php?lesson_id=${LESSON_ID}`);
+    const data = await response.json();
+    
+    const warningBox = document.getElementById('attemptsWarning');
+    const warningMsg = document.getElementById('attemptsMessage');
+    
+    if (!warningBox || !warningMsg) return true;
+    
+    if (data.can_play) {
+      if (data.attempts_remaining <= 1) {
+        warningBox.style.display = 'block';
+        warningBox.className = 'alert alert-warning';
+        warningMsg.textContent = `هذه آخر محاولة متاحة لك اليوم!`;
+      } else if (data.attempts_remaining <= 2) {
+        warningBox.style.display = 'block';
+        warningBox.className = 'alert alert-info';
+        warningMsg.textContent = `لديك ${data.attempts_remaining} محاولة متبقية اليوم`;
+      }
+      return true;
+    } else {
+      warningBox.style.display = 'block';
+      warningBox.className = 'alert alert-danger';
+      const nextTime = formatNextAvailableTime(data.next_available);
+      warningMsg.innerHTML = `
+        <strong>لقد استنفدت محاولاتك اليومية (${data.max_attempts} محاولات)</strong><br>
+        <small>يمكنك المحاولة مرة أخرى بعد: ${nextTime}</small>
+      `;
+      
+      // تعطيل أزرار البدء
+      document.querySelectorAll('.game-mode-card').forEach(card => {
+        card.style.opacity = '0.5';
+        card.style.cursor = 'not-allowed';
+        card.onclick = null;
+      });
+      
+      return false;
+    }
+  } catch (error) {
+    console.error('Error checking attempts:', error);
+    return true;
+  }
+}
+
+function formatNextAvailableTime(timeString) {
+  if (!timeString) return '';
+  const nextTime = new Date(timeString);
+  const now = new Date();
+  const diff = nextTime - now;
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `${hours} ساعة و ${minutes} دقيقة`;
+  } else {
+    return `${minutes} دقيقة`;
+  }
+}
+
+async function selectGameMode(mode) {
+  // التحقق من المحاولات المتاحة
+  const canPlay = await checkAttempts();
+  if (!canPlay) {
+    alert('لقد استنفدت محاولاتك اليومية. يرجى المحاولة مرة أخرى لاحقاً.');
+    return;
+  }
+  
+  selectedGameMode = mode;
+  
+  // إخفاء واجهة الاختيار
+  const selector = document.getElementById('gameModeSelector');
+  if (selector) {
+    selector.style.display = 'none';
+  }
+  
+  // إظهار حاوية اللعبة
+  const gameContainer = document.getElementById('gameContainer');
+  if (gameContainer) {
+    gameContainer.style.display = 'flex';
+  }
+  
+  // بدء اللعبة
+  launchGameWithMode(mode);
+}
+
+function launchGameWithMode(mode) {
   adventureGame = new AdventureGame({
     lessonId: LESSON_ID,
-    gameType: GAME_TYPE,
-    questions: AdventureGame.shuffle(QUESTIONS),
+    gameType: mode,
+    questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
     scholars: SCHOLARS,
     containerId: 'gameContainer',
   });
@@ -395,9 +553,20 @@ function launchGame() {
   adventureGame.start();
 }
 
+window.launchGameWithMode = launchGameWithMode;
+
 document.getElementById('startGameBtn')?.addEventListener('click', () => {
   document.querySelector('[data-tab-target="tabGame"]')?.click();
-  setTimeout(launchGame, 100);
+  setTimeout(() => {
+    checkAttempts(); // التحقق عند فتح التبويب
+  }, 100);
+});
+
+// التحقق التلقائي عند فتح تبويب اللعبة
+document.querySelector('[data-tab-target="tabGame"]')?.addEventListener('click', () => {
+  setTimeout(() => {
+    checkAttempts();
+  }, 100);
 });
 
 <?php if ($isVideoProcessing): ?>
