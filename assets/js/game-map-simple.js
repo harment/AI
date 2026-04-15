@@ -74,9 +74,16 @@ class MapAdventureGame {
   }
 
   render() {
-    if (!this.container) return;
+    if (!this.container) {
+      console.error('Game container not found');
+      return;
+    }
+    
+    console.log('Rendering game UI...');
     this.container.innerHTML = this._buildGameUI();
+    
     if (!this.eventListenersAttached) {
+      console.log('Attaching event listeners...');
       this._attachEventListeners();
       this.eventListenersAttached = true;
     }
@@ -266,6 +273,7 @@ class MapAdventureGame {
       const borderColor = isCurrent ? 'white' : 'rgba(255,255,255,0.5)';
       const cursor = isCurrent ? 'pointer' : 'default';
       const animation = isCurrent ? 'map-point-pulse 2s infinite' : 'none';
+      const pointerEvents = isCurrent ? 'auto' : 'none';
       
       html += `
         <div class="map-point ${isCurrent ? 'current' : ''}" 
@@ -286,6 +294,7 @@ class MapAdventureGame {
                     color: white; 
                     font-size: 1.1rem;
                     cursor: ${cursor};
+                    pointer-events: ${pointerEvents};
                     z-index: ${isCurrent ? 20 : 10};
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                     animation: ${animation};
@@ -329,11 +338,14 @@ class MapAdventureGame {
   }
 
   _attachEventListeners() {
+    console.log('_attachEventListeners called');
     // Click on current point to show question using event delegation
     this.container.addEventListener('click', (e) => {
+      console.log('Container clicked', e.target);
       const point = e.target.closest('.map-point');
       if (point) {
         const index = parseInt(point.dataset.index);
+        console.log('Point clicked:', index, 'Current:', this.current);
         if (index === this.current && !this.showingQuestion) {
           this._showQuestion(this.current);
         }
