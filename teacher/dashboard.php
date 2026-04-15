@@ -13,7 +13,7 @@ $totalGames    = $db->query("SELECT COUNT(*) FROM student_games WHERE completed 
 $recentStudents = $db->query("SELECT * FROM students ORDER BY created_at DESC LIMIT 5")->fetchAll();
 
 // Top students
-$topStudents = $db->query("SELECT s.id, s.name, s.points, COUNT(DISTINCT ss.scholar_id) scholars FROM students s LEFT JOIN student_scholars ss ON ss.student_id = s.id GROUP BY s.id ORDER BY s.points DESC LIMIT 5")->fetchAll();
+$topStudents = $db->query("SELECT s.id, s.name, s.points, COUNT(DISTINCT ss.scholar_id) scholars FROM students s LEFT JOIN student_scholars ss ON ss.student_id = s.id GROUP BY s.id, s.name, s.points ORDER BY s.points DESC LIMIT 5")->fetchAll();
 
 // Active lessons
 $openLessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN courses c ON c.id = l.course_id WHERE l.is_open = 1 ORDER BY l.id DESC LIMIT 5")->fetchAll();
@@ -33,7 +33,7 @@ $difficultQuestions = $db->query("
     LEFT JOIN question_attempts qa ON qa.question_id = q.id
     LEFT JOIN lessons l ON l.id = q.lesson_id
     WHERE qa.id IS NOT NULL
-    GROUP BY q.id
+    GROUP BY q.id, q.question_text, l.name
     HAVING success_rate < 50 OR success_rate IS NULL
     ORDER BY success_rate ASC, total_attempts DESC
     LIMIT 10
@@ -53,7 +53,7 @@ $strugglingStudents = $db->query("
     FROM students s
     LEFT JOIN student_games sg ON sg.student_id = s.id
     WHERE sg.id IS NOT NULL
-    GROUP BY s.id
+    GROUP BY s.id, s.name, s.university_id, s.points
     HAVING failed_games >= 3 OR failure_rate > 50
     ORDER BY failed_games DESC, failure_rate DESC
     LIMIT 10
@@ -74,7 +74,7 @@ $difficultLessons = $db->query("
     LEFT JOIN courses c ON c.id = l.course_id
     LEFT JOIN student_games sg ON sg.lesson_id = l.id
     WHERE sg.id IS NOT NULL AND l.is_open = 1
-    GROUP BY l.id
+    GROUP BY l.id, l.name, c.name
     ORDER BY completion_rate ASC, avg_points ASC
     LIMIT 5
 ")->fetchAll();
@@ -90,7 +90,7 @@ $weaknessAnalysis = $db->query("
     JOIN questions q ON q.id = qa.question_id
     JOIN lessons l ON l.id = qa.lesson_id
     WHERE qa.is_correct = 0
-    GROUP BY q.id
+    GROUP BY q.id, q.question_text, l.name
     ORDER BY students_affected DESC, total_wrong_attempts DESC
     LIMIT 8
 ")->fetchAll();

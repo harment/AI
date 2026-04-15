@@ -12,7 +12,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     $bom = "\xEF\xBB\xBF"; // UTF-8 BOM for Excel
     echo $bom;
     echo "الاسم,الرقم الجامعي,المستوى,السنة,النقاط,عدد العلماء,المغامرات,تاريخ التسجيل\n";
-    $rows = $db->query("SELECT s.name, s.university_id, s.level, s.study_year, s.points, COUNT(DISTINCT ss.scholar_id) scholars, COUNT(DISTINCT sg.id) games, s.created_at FROM students s LEFT JOIN student_scholars ss ON ss.student_id=s.id LEFT JOIN student_games sg ON sg.student_id=s.id GROUP BY s.id ORDER BY s.points DESC")->fetchAll();
+    $rows = $db->query("SELECT s.id, s.name, s.university_id, s.level, s.study_year, s.points, COUNT(DISTINCT ss.scholar_id) scholars, COUNT(DISTINCT sg.id) games, s.created_at FROM students s LEFT JOIN student_scholars ss ON ss.student_id=s.id LEFT JOIN student_games sg ON sg.student_id=s.id GROUP BY s.id, s.name, s.university_id, s.level, s.study_year, s.points, s.created_at ORDER BY s.points DESC")->fetchAll();
     foreach ($rows as $r) {
         echo implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $r)) . "\n";
     }
@@ -37,10 +37,10 @@ $avgPts     = $db->query("SELECT AVG(points) FROM students")->fetchColumn() ?: 0
 $maxPts     = $db->query("SELECT MAX(points) FROM students")->fetchColumn() ?: 0;
 
 // Games per lesson
-$lessonStats = $db->query("SELECT l.name, COUNT(*) plays, AVG(sg.points_earned) avg_pts, SUM(sg.completed) wins FROM lessons l LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id ORDER BY plays DESC")->fetchAll();
+$lessonStats = $db->query("SELECT l.id, l.name, COUNT(*) plays, AVG(sg.points_earned) avg_pts, SUM(sg.completed) wins FROM lessons l LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id, l.name ORDER BY plays DESC")->fetchAll();
 
 // Time spent
-$timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM students s LEFT JOIN activity_log al ON al.student_id=s.id GROUP BY s.id ORDER BY total_sec DESC LIMIT 10")->fetchAll();
+$timeStats = $db->query("SELECT s.id, s.name, SUM(al.duration_seconds) total_sec FROM students s LEFT JOIN activity_log al ON al.student_id=s.id GROUP BY s.id, s.name ORDER BY total_sec DESC LIMIT 10")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">

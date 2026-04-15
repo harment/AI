@@ -22,7 +22,7 @@ $params = [];
 if ($search) { $where .= ' AND (name LIKE ? OR university_id LIKE ? OR email LIKE ?)'; $params = array_merge($params, ["%$search%", "%$search%", "%$search%"]); }
 if ($level)  { $where .= ' AND level = ?'; $params[] = $level; }
 
-$students = $db->prepare("SELECT s.*, COUNT(DISTINCT sg.id) AS games_played FROM students s LEFT JOIN student_games sg ON sg.student_id = s.id $where GROUP BY s.id ORDER BY s.points DESC");
+$students = $db->prepare("SELECT s.id, s.name, s.university_id, s.level, s.study_year, s.email, s.points, s.avatar, s.is_active, s.created_at, COUNT(DISTINCT sg.id) AS games_played FROM students s LEFT JOIN student_games sg ON sg.student_id = s.id $where GROUP BY s.id, s.name, s.university_id, s.level, s.study_year, s.email, s.points, s.avatar, s.is_active, s.created_at ORDER BY s.points DESC");
 $students->execute($params);
 $students = $students->fetchAll();
 ?>

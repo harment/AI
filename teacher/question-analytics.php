@@ -111,7 +111,7 @@ if ($lessonId) {
             LEFT JOIN courses c ON c.id = l.course_id
             LEFT JOIN questions q ON q.lesson_id = l.id
             WHERE l.is_open = 1
-            GROUP BY l.id
+            GROUP BY l.id, l.name, c.name
             ORDER BY l.sort_order, l.id
           ")->fetchAll();
           
