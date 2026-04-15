@@ -379,7 +379,6 @@ tbody tr + tr { border-top: 1px solid var(--border); }
 }
 
 @media (max-width: 550px) {
-  .stats-grid { grid-template-columns: 1fr 1fr; }
   .courses-grid { grid-template-columns: 1fr; }
   .chatbot-box { width: calc(100vw - 2rem); left: 1rem; }
 
