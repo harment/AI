@@ -193,6 +193,8 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
 .chatbot-toggle:hover { background: var(--primary-lt); transform: scale(1.1); }
 .chatbot-box  { position: fixed; bottom: 5.5rem; left: 2rem; width: 340px; max-height: 480px; background: var(--card); border-radius: var(--radius); box-shadow: 0 8px 40px rgba(0,0,0,.2); z-index: 1100; display: none; flex-direction: column; overflow: hidden; }
 .chatbot-box.open { display: flex; animation: slideUp .3s ease; }
+.lesson-game-active .chatbot-toggle,
+.lesson-game-active .chatbot-box { display: none !important; }
 .chatbot-header { background: linear-gradient(135deg, var(--dark), var(--primary)); color: #fff; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .75rem; }
 .chatbot-title  { font-weight: 700; flex: 1; }
 .chatbot-close  { background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; font-size: 1.2rem; }

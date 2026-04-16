@@ -8,6 +8,8 @@ if (empty($_SESSION['student_id'])) {
 
 $studentId = (int)$_SESSION['student_id'];
 $db        = getDB();
+const DAILY_GAME_ATTEMPTS_LIMIT = 5;
+const DAILY_GAME_ATTEMPTS_WINDOW_HOURS = 24;
 
 function dbTableHasColumn(PDO $db, string $table, string $column): bool
 {
@@ -21,6 +23,41 @@ function dbTableHasColumn(PDO $db, string $table, string $column): bool
     ");
     $stmt->execute([$table, $column]);
     return (bool)$stmt->fetchColumn();
+}
+
+function getRecentLessonGameAttempts(PDO $db, int $studentId, int $lessonId, int $hours = DAILY_GAME_ATTEMPTS_WINDOW_HOURS): int
+{
+    $stmt = $db->prepare("
+        SELECT COUNT(*)
+        FROM activity_log
+        WHERE student_id = ?
+          AND lesson_id = ?
+          AND action IN ('game_play', 'game_win')
+          AND created_at >= (NOW() - INTERVAL {$hours} HOUR)
+    ");
+    $stmt->execute([$studentId, $lessonId]);
+    return (int)$stmt->fetchColumn();
+}
+
+function getRetryAfterForLessonGame(PDO $db, int $studentId, int $lessonId, int $hours = DAILY_GAME_ATTEMPTS_WINDOW_HOURS): ?string
+{
+    $stmt = $db->prepare("
+        SELECT created_at
+        FROM activity_log
+        WHERE student_id = ?
+          AND lesson_id = ?
+          AND action IN ('game_play', 'game_win')
+          AND created_at >= (NOW() - INTERVAL {$hours} HOUR)
+        ORDER BY created_at ASC
+        LIMIT 1
+    ");
+    $stmt->execute([$studentId, $lessonId]);
+    $oldest = $stmt->fetchColumn();
+    if (!$oldest) {
+        return null;
+    }
+    $retryAt = (new DateTime((string)$oldest))->modify("+{$hours} hours");
+    return $retryAt->format(DateTime::ATOM);
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -48,6 +85,17 @@ if (!$lesson->fetch()) {
     jsonResponse(['error' => 'Lesson not found or closed'], 404);
 }
 
+$recentAttempts = getRecentLessonGameAttempts($db, $studentId, $lessonId);
+if ($recentAttempts >= DAILY_GAME_ATTEMPTS_LIMIT) {
+    jsonResponse([
+        'error'              => 'لقد استنفدت محاولاتك اليومية لهذا الدرس.',
+        'max_attempts'       => DAILY_GAME_ATTEMPTS_LIMIT,
+        'remaining_attempts' => 0,
+        'attempts_left'      => 0,
+        'retry_after'        => getRetryAfterForLessonGame($db, $studentId, $lessonId),
+    ], 429);
+}
+
 // One row per student+lesson: upsert approach (compatible with older schemas)
 $hasCompleted = dbTableHasColumn($db, 'student_games', 'completed');
 $hasAttempts  = dbTableHasColumn($db, 'student_games', 'attempts');
@@ -64,7 +112,7 @@ $existing = $existing->fetch();
 $pointsAdded = 0;
 if (!$existing) {
     $insertCols = ['student_id', 'lesson_id', 'points_earned'];
-    $insertVals = [$studentId, $lessonId, $points];
+    $insertVals = [$studentId, $lessonId, $completed ? $points : 0];
     if ($hasScholar) {
         $insertCols[] = 'scholar_id';
         $insertVals[] = $scholarId;
@@ -80,14 +128,9 @@ if (!$existing) {
         $pointsAdded = $points;
     }
 } else {
-    $alreadyCompleted = $hasCompleted
-        ? ((int)$existing['completed'] === 1)
-        : ((int)$existing['points_earned'] > 0);
-    $isFirstWin = $completed && !$alreadyCompleted;
-
-    if ($isFirstWin) {
-    // First win – upgrade existing record to completed and award points
-        $setParts = ['points_earned=?'];
+    if ($completed) {
+        // Every completed replay adds points
+        $setParts = ['points_earned=points_earned+?'];
         $updateVals = [$points];
         if ($hasScholar) {
             $setParts[] = 'scholar_id=?';
@@ -104,7 +147,7 @@ if (!$existing) {
            ->execute($updateVals);
         $pointsAdded = $points;
     } elseif ($hasAttempts) {
-        // Replay (already completed or another loss) – just increment attempts
+        // Loss replay: increment attempts only
         $db->prepare("UPDATE student_games SET attempts=attempts+1 WHERE id=?")->execute([$existing['id']]);
     }
 }
@@ -128,4 +171,11 @@ if ($completed) {
     logActivity($studentId, $lessonId, 'game_play', '', 0);
 }
 
-jsonResponse(['success' => true, 'points_added' => $pointsAdded]);
+$remainingAttempts = max(0, DAILY_GAME_ATTEMPTS_LIMIT - ($recentAttempts + 1));
+jsonResponse([
+    'success'            => true,
+    'points_added'       => $pointsAdded,
+    'max_attempts'       => DAILY_GAME_ATTEMPTS_LIMIT,
+    'remaining_attempts' => $remainingAttempts,
+    'attempts_left'      => $remainingAttempts,
+]);

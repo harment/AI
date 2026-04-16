@@ -125,6 +125,7 @@ class AdventureGame {
         fb.style.color      = '#E65100';
         fb.innerHTML        = '⚠️ إجابة خاطئة، حاول مرة أخرى!';
         fb.style.display    = 'block';
+        this._recordAttempt(q.id, false, this.questionAttempts);
       }
     }
   }
@@ -212,7 +213,15 @@ class AdventureGame {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lesson_id: this.lessonId, points: pts, scholar_id: scholarId, completed: won ? 1 : 0 }),
     })
-    .then(res => { if (!res.ok) return res.json().then(d => { throw new Error(d.error || res.statusText); }); })
+    .then(async res => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || res.statusText);
+      }
+      if (typeof data.remaining_attempts === 'number' && window.showToast) {
+        showToast(`المتبقي اليوم لهذا الدرس: ${data.remaining_attempts} من ${data.max_attempts || 5}`, 'info');
+      }
+    })
     .catch(err => console.error('[game] saveResult failed:', err.message));
   }
 

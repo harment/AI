@@ -50,7 +50,10 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     try {
         $qaRows = $db->prepare(
             "SELECT qa.question_id, q.question_text,
-                    COUNT(*) total, SUM(qa.is_correct) correct_count
+                    COUNT(*) total,
+                    SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                    SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                    COUNT(DISTINCT qa.student_id) students_count
              FROM question_attempts qa
              JOIN questions q ON q.id=qa.question_id
              WHERE qa.lesson_id=?
@@ -73,10 +76,16 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
 
     if (!empty($qaStats)) {
         $promptParts[] = "\n\n## أداء كل سؤال";
+        usort($qaStats, fn($a, $b) => ((int)$b['wrong_count']) <=> ((int)$a['wrong_count']));
         foreach ($qaStats as $qs) {
             $r = $qs['total'] ? round($qs['correct_count'] / $qs['total'] * 100) : 0;
-            $promptParts[] = "- السؤال: \"{$qs['question_text']}\" – نسبة الإجابة الصحيحة: $r% ({$qs['correct_count']}/{$qs['total']})";
+            $promptParts[] = "- ID السؤال {$qs['question_id']}: \"{$qs['question_text']}\" – صحيحة: {$qs['correct_count']}، خاطئة: {$qs['wrong_count']}، نسبة الصحيحة: {$r}%، عدد الطلاب: {$qs['students_count']}";
         }
+        $promptParts[] = "\n## أعلى الأسئلة إخفاقاً حسب رقم السؤال (ID)\n" .
+            implode("\n", array_map(
+                fn($qs) => "- السؤال ID {$qs['question_id']} بعدد أخطاء {$qs['wrong_count']}",
+                array_slice($qaStats, 0, 5)
+            ));
     }
 
     if (!empty($games)) {
@@ -87,7 +96,7 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
         }
     }
 
-    $promptParts[] = "\n\n## المطلوب\nبناءً على البيانات أعلاه، قدّم:\n1. **تقييم عام** لأداء الطلاب في هذا الدرس (فقرة واحدة)\n2. **نقاط الضعف الرئيسية** (3 نقاط كحد أقصى)\n3. **خطة تحسين مقترحة** لكل نقطة ضعف (خطوات عملية)\n4. **توصيات للأستاذ** لتحسين تصميم الدرس\n\nاكتب الإجابة بالعربية واستخدم HTML بسيط (h4, p, ul, li, strong) للتنسيق.";
+    $promptParts[] = "\n\n## المطلوب\nبناءً على البيانات أعلاه، قدّم:\n1. **تقييم عام** لأداء الطلاب في هذا الدرس (فقرة واحدة)\n2. **نقاط الضعف الرئيسية** مرتبطة مباشرةً بأرقام IDs الأسئلة التي تكررت فيها الأخطاء (3 نقاط كحد أقصى)\n3. **خطة تحسين مقترحة** لكل نقطة ضعف (خطوات عملية واقعية قابلة للتطبيق)\n4. **توصيات للأستاذ** لتحسين تصميم الدرس والأسئلة\n\nاكتب الإجابة بالعربية واستخدم HTML بسيط (h4, p, ul, li, strong) للتنسيق.";
 
     $prompt = implode('', $promptParts);
 
@@ -132,12 +141,15 @@ if ($lesson) {
 
     try {
         $qaRows = $db->prepare(
-            "SELECT qa.question_id, COUNT(*) total, SUM(qa.is_correct) correct_count,
+            "SELECT qa.question_id, COUNT(*) total,
+                    SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                    SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                    COUNT(DISTINCT qa.student_id) students_count,
                     q.question_text, q.correct_option
-             FROM question_attempts qa
-             JOIN questions q ON q.id=qa.question_id
-             WHERE qa.lesson_id=?
-             GROUP BY qa.question_id ORDER BY (SUM(qa.is_correct)/COUNT(*)) ASC"
+              FROM question_attempts qa
+              JOIN questions q ON q.id=qa.question_id
+              WHERE qa.lesson_id=?
+              GROUP BY qa.question_id ORDER BY (SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END)/COUNT(*)) ASC"
         );
         $qaRows->execute([$lessonId]);
         $qaStats = $qaRows->fetchAll();
@@ -306,13 +318,16 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>نص السؤال</th><th>الإجابات</th><th>نسبة الصحيحة</th></tr></thead>
+        <thead><tr><th>#</th><th>ID السؤال</th><th>نص السؤال</th><th>صحيحة</th><th>خاطئة</th><th>الإجابات</th><th>نسبة الصحيحة</th></tr></thead>
         <tbody>
           <?php foreach ($qaStats as $i => $qs): ?>
           <?php $rate = $qs['total'] ? round($qs['correct_count'] / $qs['total'] * 100) : 0; ?>
           <tr>
             <td><?= $i + 1 ?></td>
+            <td><strong>#<?= (int)$qs['question_id'] ?></strong></td>
             <td style="max-width:350px;"><?= clean(mb_substr($qs['question_text'], 0, 80)) ?><?= mb_strlen($qs['question_text']) > 80 ? '…' : '' ?></td>
+            <td><span class="badge badge-primary"><?= (int)$qs['correct_count'] ?></span></td>
+            <td><span class="badge badge-danger"><?= (int)$qs['wrong_count'] ?></span></td>
             <td><?= $qs['total'] ?></td>
             <td>
               <span style="font-weight:700;color:<?= $rate < 40 ? 'var(--danger)' : ($rate < 70 ? 'var(--accent)' : 'var(--primary)') ?>;"><?= $rate ?>%</span>

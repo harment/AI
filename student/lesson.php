@@ -381,6 +381,12 @@ const GAME_TYPE = '<?= $lesson['game_type'] ?>';
 let adventureGame = null;
 window.adventureGame = null;
 
+function syncLessonGameUIState() {
+  const gameTab = document.getElementById('tabGame');
+  const isGameTabActive = !!gameTab && gameTab.classList.contains('active');
+  document.body.classList.toggle('lesson-game-active', isGameTabActive);
+}
+
 function launchGame() {
   document.getElementById('gameIntro').style.display    = 'none';
   document.getElementById('gameContainer').style.display = 'flex';
@@ -393,12 +399,18 @@ function launchGame() {
   });
   window.adventureGame = adventureGame;
   adventureGame.start();
+  syncLessonGameUIState();
 }
 
 document.getElementById('startGameBtn')?.addEventListener('click', () => {
   document.querySelector('[data-tab-target="tabGame"]')?.click();
   setTimeout(launchGame, 100);
 });
+
+document.querySelectorAll('[data-tab-target]').forEach(btn => {
+  btn.addEventListener('click', () => setTimeout(syncLessonGameUIState, 0));
+});
+syncLessonGameUIState();
 
 <?php if ($isVideoProcessing): ?>
 // التحقق التلقائي من اكتمال الفيديو
