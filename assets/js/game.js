@@ -146,7 +146,7 @@ class AdventureGame {
     document.getElementById(`dot-${this.current}`)?.classList.add('done');
     this.current++;
     if (this.current >= this.questions.length) {
-      nextBtn.textContent = '� انهاء المغامرة';
+      nextBtn.textContent = '🏁 انهاء المغامرة';
       nextBtn.onclick     = () => this._showResult(true);
     } else {
       nextBtn.textContent = 'التالي ←';
@@ -167,24 +167,25 @@ class AdventureGame {
   _showResult(won) {
     this._playSound(won ? 'win' : 'lose');
     const pts = won ? Math.round(this.BASE_PTS * (this.score / this.questions.length) * (1 + 0.1 * (this.questions.length - this.errors))) : 0;
-    const scholar = won ? this.scholars[Math.floor(Math.random() * this.scholars.length)] : null;
+    const scholar = (won && this.scholars.length) ? this.scholars[Math.floor(Math.random() * this.scholars.length)] : null;
 
     const overlay = document.getElementById('gameOverlay');
     overlay.innerHTML = `
     <div class="game-result-box">
-      <div class="result-icon">${won ? '�' : '�'}</div>
+      <div class="result-icon">${won ? '🏆' : '😔'}</div>
       <div class="result-title" style="color:${won ? 'var(--primary)' : 'var(--danger)'}">
         ${won ? 'مبروك! اجتزت المغامرة' : 'حاول مرة أخرى!'}
       </div>
       <div style="color:var(--muted);margin:.5rem 0;">الإجابات الصحيحة: ${this.score} من ${this.questions.length}</div>
       ${pts ? `<div class="result-points">+${pts} نقطة</div>` : ''}
       ${scholar ? `<div class="scholar-card">
-        <div class="scholar-img">�</div>
+        <div class="scholar-img">📜</div>
         <div class="scholar-name">اكتشفت: ${scholar.name}</div>
         <div class="scholar-bio">${scholar.short_bio}</div>
       </div>` : ''}
       <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;">
-        <button class="btn btn-primary" onclick="window.adventureGame.restart()">� إعادة المحاولة</button>
+        <button class="btn btn-primary" onclick="window.adventureGame.restart()">🔄 إعادة المحاولة</button>
+        ${won ? `<a href="/student/dashboard.php" class="btn btn-accent">🏠 لوحتي</a>` : ''}
         <button class="btn btn-outline" onclick="document.getElementById('gameOverlay').style.display='none'">إغلاق</button>
       </div>
     </div>`;

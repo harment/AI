@@ -21,19 +21,9 @@ if (!$lessonId || !$questionId) {
     jsonResponse(['error' => 'lesson_id and question_id required'], 400);
 }
 
-// Upsert: one row per student+question per lesson (keep first attempt, update if re-answering)
-$existing = $db->prepare(
-    "SELECT id FROM question_attempts WHERE student_id=? AND lesson_id=? AND question_id=?"
-);
-$existing->execute([$studentId, $lessonId, $questionId]);
-if ($existing->fetch()) {
-    $db->prepare(
-        "UPDATE question_attempts SET is_correct=?, attempts_count=? WHERE student_id=? AND lesson_id=? AND question_id=?"
-    )->execute([$isCorrect, $attempts, $studentId, $lessonId, $questionId]);
-} else {
-    $db->prepare(
-        "INSERT INTO question_attempts (student_id, lesson_id, question_id, is_correct, attempts_count) VALUES (?,?,?,?,?)"
-    )->execute([$studentId, $lessonId, $questionId, $isCorrect, $attempts]);
-}
+// Always insert a new row per answer attempt to preserve full history for analysis
+$db->prepare(
+    "INSERT INTO question_attempts (student_id, lesson_id, question_id, is_correct, attempts_count) VALUES (?,?,?,?,?)"
+)->execute([$studentId, $lessonId, $questionId, $isCorrect, $attempts]);
 
 jsonResponse(['success' => true]);

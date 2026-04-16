@@ -50,6 +50,7 @@ $openLessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN
 </aside>
 <main class="main-content">
   <h2 style="margin-bottom:1.5rem;">لوحة التحكم الرئيسية</h2>
+  <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-icon" style="background:#E8F5E9;"><i class="fas fa-users" style="color:var(--primary);"></i></div>
       <div class="stat-value"><?= $totalStudents ?></div>

@@ -86,7 +86,7 @@ $leaderboard = getLeaderboard(5);
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start;">
+  <div class="dashboard-panel" style="display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;align-items:start;">
     <!-- Courses -->
     <div>
       <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
