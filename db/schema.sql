@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS question_attempts (
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
     FOREIGN KEY (lesson_id)   REFERENCES lessons(id)   ON DELETE CASCADE,
     INDEX idx_qa_student  (student_id),
+    INDEX idx_qa_student_question (student_id, question_id),
     INDEX idx_qa_lesson   (lesson_id),
     INDEX idx_qa_question (question_id)
 );
