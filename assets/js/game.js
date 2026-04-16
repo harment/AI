@@ -139,7 +139,9 @@ class AdventureGame {
         is_correct:     isCorrect ? 1 : 0,
         attempts_count: attemptsCount,
       }),
-    }).catch(() => {});
+    })
+    .then(res => { if (!res.ok) return res.json().then(d => { throw new Error(d.error || res.statusText); }); })
+    .catch(err => console.error('[game] recordAttempt failed:', err.message));
   }
 
   _markDoneAndAdvance(nextBtn) {
@@ -209,7 +211,9 @@ class AdventureGame {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lesson_id: this.lessonId, points: pts, scholar_id: scholarId, completed: won ? 1 : 0 }),
-    }).catch(() => {});
+    })
+    .then(res => { if (!res.ok) return res.json().then(d => { throw new Error(d.error || res.statusText); }); })
+    .catch(err => console.error('[game] saveResult failed:', err.message));
   }
 
   _playSound(key) {
