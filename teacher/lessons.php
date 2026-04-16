@@ -83,6 +83,9 @@ $lessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN cou
   <a href="/teacher/analytics.php"        class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
   <a href="/teacher/question_analysis.php" class="sidebar-link"><i class="fas fa-chart-line"></i> تحليل الأسئلة</a>
 </aside>
+<main class="main-content">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+    <h2><i class="fas fa-layer-group"></i> إدارة الدروس</h2>
     <button class="btn btn-primary" onclick="document.getElementById('addModal').style.display='flex'"><i class="fas fa-plus"></i> إضافة درس</button>
   </div>
 

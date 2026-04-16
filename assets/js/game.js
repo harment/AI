@@ -98,6 +98,7 @@ class AdventureGame {
       fb.innerHTML        = '✅ ' + (q.feedback_correct || 'إجابة صحيحة! أحسنت.');
       fb.style.display    = 'block';
       this.score++;
+      this._recordAttempt(q.id, true, this.questionAttempts + 1);
       this._markDoneAndAdvance(next);
     } else {
       this.questionAttempts++;
@@ -116,6 +117,7 @@ class AdventureGame {
         fb.innerHTML        = '❌ ' + (q.feedback_correct || 'الإجابة الصحيحة مُظلَّلة باللون الأخضر.');
         fb.style.display    = 'block';
         this.errors++;
+        this._recordAttempt(q.id, false, this.questionAttempts);
         this._markDoneAndAdvance(next);
       } else {
         // First wrong attempt: encourage retry
@@ -125,6 +127,19 @@ class AdventureGame {
         fb.style.display    = 'block';
       }
     }
+  }
+
+  _recordAttempt(questionId, isCorrect, attemptsCount) {
+    fetch('/api/answers.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lesson_id:      this.lessonId,
+        question_id:    questionId,
+        is_correct:     isCorrect ? 1 : 0,
+        attempts_count: attemptsCount,
+      }),
+    }).catch(() => {});
   }
 
   _markDoneAndAdvance(nextBtn) {

@@ -45,26 +45,20 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     $games->execute([$lessonId]);
     $games = $games->fetchAll();
 
-    // إحصائيات السؤال التفصيلية (إذا كان جدول question_answers موجوداً)
-    $hasQA = false;
-    try {
-        $db->query("SELECT 1 FROM question_answers LIMIT 1");
-        $hasQA = true;
-    } catch (Exception $e) {}
-
+    // إحصائيات السؤال التفصيلية من question_attempts
     $qaStats = [];
-    if ($hasQA) {
+    try {
         $qaRows = $db->prepare(
             "SELECT qa.question_id, q.question_text,
                     COUNT(*) total, SUM(qa.is_correct) correct_count
-             FROM question_answers qa
+             FROM question_attempts qa
              JOIN questions q ON q.id=qa.question_id
              WHERE qa.lesson_id=?
              GROUP BY qa.question_id"
         );
         $qaRows->execute([$lessonId]);
         $qaStats = $qaRows->fetchAll();
-    }
+    } catch (Exception $e) {}
 
     // بناء الـ prompt
     $totalGames  = count($games);
@@ -136,20 +130,19 @@ if ($lesson) {
     $studentPerf->execute([$lessonId]);
     $studentPerf = $studentPerf->fetchAll();
 
-    try { $db->query("SELECT 1 FROM question_answers LIMIT 1"); $hasQA = true; } catch (Exception $e) {}
-
-    if ($hasQA) {
+    try {
         $qaRows = $db->prepare(
             "SELECT qa.question_id, COUNT(*) total, SUM(qa.is_correct) correct_count,
                     q.question_text, q.correct_option
-             FROM question_answers qa
+             FROM question_attempts qa
              JOIN questions q ON q.id=qa.question_id
              WHERE qa.lesson_id=?
              GROUP BY qa.question_id ORDER BY (SUM(qa.is_correct)/COUNT(*)) ASC"
         );
         $qaRows->execute([$lessonId]);
         $qaStats = $qaRows->fetchAll();
-    }
+        $hasQA = !empty($qaStats);
+    } catch (Exception $e) { $hasQA = false; }
 }
 
 // ===================== دالة استدعاء الذكاء =====================
