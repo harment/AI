@@ -157,7 +157,7 @@ if (!empty($lesson['video_url'])) {
 <nav class="navbar">
   <div class="navbar-brand">
     <button id="sidebarToggle" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;display:none;"><i class="fas fa-bars"></i></button>
-    <span>�</span><span>المساعد الذّكاليّ</span>
+    <span>🌿</span><span>المساعد الذّكاليّ</span>
   </div>
   <ul class="navbar-nav">
     <li><a href="/student/courses.php?id=<?= $lesson['course_id'] ?>" class="nav-link"><i class="fas fa-arrow-right"></i> رجوع</a></li>
@@ -574,11 +574,11 @@ document.querySelector('[data-tab-target="tabGame"]')?.addEventListener('click',
 
 <?php if ($isVideoProcessing): ?>
 // التحقق التلقائي من اكتمال الفيديو
-let checkAttempts = 0;
+let videoCheckPollCount = 0;
 const maxAttempts = 80;
 
 const videoCheckInterval = setInterval(() => {
-  checkAttempts++;
+  videoCheckPollCount++;
   
   fetch(window.location.href)
     .then(response => response.text())
@@ -590,7 +590,7 @@ const videoCheckInterval = setInterval(() => {
         location.reload();
       }
       
-      if (checkAttempts >= maxAttempts) {
+      if (videoCheckPollCount >= maxAttempts) {
         clearInterval(videoCheckInterval);
       }
     })
