@@ -77,6 +77,8 @@ CALL _add_col_question_stats_wrong_count();
 DROP PROCEDURE IF EXISTS _add_col_question_stats_wrong_count;
 
 -- 5. ضمان وجود الفهرس المركب (student_id, question_id) في القواعد القديمة
+-- ملاحظة: الفهرس موجود في CREATE TABLE أعلاه للتثبيتات الجديدة،
+-- وهذه الخطوات مخصصة فقط للتثبيتات القديمة التي أُنشئ فيها الجدول قبل إضافة الفهرس.
 DROP PROCEDURE IF EXISTS _add_idx_qa_student_question;
 DELIMITER //
 CREATE PROCEDURE _add_idx_qa_student_question()
