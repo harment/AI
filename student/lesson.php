@@ -151,6 +151,7 @@ if (!empty($lesson['video_url'])) {
     to { transform: rotate(360deg); }
   }
   </style>
+  <link rel="stylesheet" href="/assets/css/game-enhanced.css">
 </head>
 <body data-lesson-id="<?= $lessonId ?>">
 <nav class="navbar">
@@ -412,7 +413,8 @@ if (!empty($lesson['video_url'])) {
 </div>
 
 <script src="/assets/js/app.js"></script>
-<script src="/assets/js/game.js"></script>
+<script src="/assets/js/game-enhanced.js"></script>
+<script src="/assets/js/game-map-simple.js"></script>
 <style>
 .game-mode-card {
   background: white;
@@ -530,23 +532,26 @@ async function selectGameMode(mode) {
 }
 
 function launchGameWithMode(mode) {
-  const modeMap = {
-    'map-island': 'maze',
-    'map-mountain': 'mountain',
-    'map-lake': 'ship',
-    'map-forest': 'maze',
-    'mountain': 'mountain',
-    'maze': 'maze',
-    'ship': 'ship'
-  };
-  const normalizedMode = modeMap[mode] || 'mountain';
-  adventureGame = new AdventureGame({
-    lessonId: LESSON_ID,
-    gameType: normalizedMode,
-    questions: AdventureGame.shuffle(QUESTIONS),
-    scholars: SCHOLARS,
-    containerId: 'gameContainer',
-  });
+  // التحقق إذا كان النمط خريطة بسيطة
+  if (mode.startsWith('map-')) {
+    const mapTheme = mode.replace('map-', ''); // island, mountain, lake, forest
+    adventureGame = new MapAdventureGame({
+      lessonId: LESSON_ID,
+      mapTheme: mapTheme,
+      questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
+      scholars: SCHOLARS,
+      containerId: 'gameContainer',
+    });
+  } else {
+    // استخدام اللعبة التقليدية
+    adventureGame = new AdventureGame({
+      lessonId: LESSON_ID,
+      gameType: mode,
+      questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
+      scholars: SCHOLARS,
+      containerId: 'gameContainer',
+    });
+  }
   window.adventureGame = adventureGame;
   adventureGame.start();
 }

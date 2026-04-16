@@ -102,6 +102,33 @@ CREATE TABLE IF NOT EXISTS student_games (
     FOREIGN KEY (scholar_id) REFERENCES scholars(id) ON DELETE SET NULL
 );
 
+-- جدول تحليلات محاولات اللعب (مخصص لتحليل الذكاء الاصطناعي)
+CREATE TABLE IF NOT EXISTS game_attempt_analytics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    lesson_id INT NOT NULL,
+    game_mode VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    total_questions INT NOT NULL DEFAULT 0,
+    completed_questions INT NOT NULL DEFAULT 0,
+    incomplete_questions INT NOT NULL DEFAULT 0,
+    score_correct INT NOT NULL DEFAULT 0,
+    score_wrong INT NOT NULL DEFAULT 0,
+    points_earned INT NOT NULL DEFAULT 0,
+    completed TINYINT(1) NOT NULL DEFAULT 0,
+    duration_seconds INT NOT NULL DEFAULT 0,
+    ended_early TINYINT(1) NOT NULL DEFAULT 0,
+    correct_question_numbers_json JSON DEFAULT NULL,
+    wrong_question_numbers_json JSON DEFAULT NULL,
+    selected_question_ids_json JSON DEFAULT NULL,
+    question_outcomes_json JSON DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE,
+    INDEX idx_gaa_student (student_id),
+    INDEX idx_gaa_lesson (lesson_id),
+    INDEX idx_gaa_created_at (created_at)
+);
+
 -- جدول محاولات الطلاب على مستوى كل سؤال
 CREATE TABLE IF NOT EXISTS question_attempts (
     id            INT AUTO_INCREMENT PRIMARY KEY,
