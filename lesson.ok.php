@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/includes/functions.php';
 $student  = requireStudent();
 $db       = getDB();
 $lessonId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
