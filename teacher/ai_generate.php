@@ -1257,11 +1257,9 @@ $configuredProviders = array_keys(array_filter($envKeys));
   <a href="/teacher/courses.php"   class="sidebar-link"><i class="fas fa-book"></i> المقررات</a>
   <a href="/teacher/lessons.php"   class="sidebar-link active"><i class="fas fa-layer-group"></i> الدروس</a>
   <a href="/teacher/scholars.php"  class="sidebar-link"><i class="fas fa-scroll"></i> قائمة العلماء</a>
-  <a href="/teacher/analytics.php" class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/analytics.php"        class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/question_analysis.php" class="sidebar-link"><i class="fas fa-chart-line"></i> تحليل الأسئلة</a>
 </aside>
-<main class="main-content">
-  <div style="margin-bottom:.75rem;font-size:.88rem;color:var(--muted);">
-    <a href="/teacher/lessons.php">الدروس</a> / <a href="/teacher/questions.php?lesson_id=<?= $lessonId ?>"><?= clean($lesson['name']) ?></a> / <strong>الذكاء الاصطناعي</strong>
   </div>
   <h2 style="margin-bottom:1.5rem;"><i class="fas fa-robot" style="color:var(--accent);"></i> توليد المحتوى بالذكاء الاصطناعي</h2>
   <p style="color:var(--muted);margin-bottom:1.5rem;">الدرس: <strong><?= clean($lesson['name']) ?></strong> – <?= clean($lesson['course_name']) ?></p>

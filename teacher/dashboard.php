@@ -45,12 +45,11 @@ $openLessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN
   <a href="/teacher/courses.php"    class="sidebar-link"><i class="fas fa-book"></i> المقررات</a>
   <a href="/teacher/lessons.php"    class="sidebar-link"><i class="fas fa-layer-group"></i> الدروس</a>
   <a href="/teacher/scholars.php"   class="sidebar-link"><i class="fas fa-scroll"></i> قائمة العلماء</a>
-  <a href="/teacher/analytics.php"  class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/analytics.php"        class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/question_analysis.php" class="sidebar-link"><i class="fas fa-chart-line"></i> تحليل الأسئلة</a>
 </aside>
 <main class="main-content">
   <h2 style="margin-bottom:1.5rem;">لوحة التحكم الرئيسية</h2>
-
-  <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-icon" style="background:#E8F5E9;"><i class="fas fa-users" style="color:var(--primary);"></i></div>
       <div class="stat-value"><?= $totalStudents ?></div>

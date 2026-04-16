@@ -37,7 +37,7 @@ $avgPts     = $db->query("SELECT AVG(points) FROM students")->fetchColumn() ?: 0
 $maxPts     = $db->query("SELECT MAX(points) FROM students")->fetchColumn() ?: 0;
 
 // Games per lesson
-$lessonStats = $db->query("SELECT l.name, COUNT(*) plays, AVG(sg.points_earned) avg_pts, SUM(sg.completed) wins FROM lessons l LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id ORDER BY plays DESC")->fetchAll();
+$lessonStats = $db->query("SELECT l.id, l.name, COUNT(*) plays, AVG(sg.points_earned) avg_pts, SUM(sg.completed) wins FROM lessons l LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id ORDER BY plays DESC")->fetchAll();
 
 // Weak lessons: played at least once and win rate < 50%
 $weakLessons = array_filter($lessonStats, fn($ls) => $ls['plays'] > 0 && (($ls['wins'] ?? 0) / $ls['plays']) < 0.5);
@@ -67,7 +67,8 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
   <a href="/teacher/courses.php"   class="sidebar-link"><i class="fas fa-book"></i> المقررات</a>
   <a href="/teacher/lessons.php"   class="sidebar-link"><i class="fas fa-layer-group"></i> الدروس</a>
   <a href="/teacher/scholars.php"  class="sidebar-link"><i class="fas fa-scroll"></i> قائمة العلماء</a>
-  <a href="/teacher/analytics.php" class="sidebar-link active"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/analytics.php"        class="sidebar-link active"><i class="fas fa-chart-bar"></i> التحليلات</a>
+  <a href="/teacher/question_analysis.php" class="sidebar-link"><i class="fas fa-chart-line"></i> تحليل الأسئلة</a>
 </aside>
 <main class="main-content">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
@@ -129,7 +130,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
     <?php else: ?>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>نسبة الفوز</th><th>متوسط النقاط</th></tr></thead>
+        <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>نسبة الفوز</th><th>متوسط النقاط</th><th></th></tr></thead>
         <tbody>
           <?php foreach ($weakLessons as $ls): ?>
           <?php $rate = $ls['plays'] ? round(($ls['wins'] / $ls['plays']) * 100) : 0; ?>
@@ -143,6 +144,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
               </div>
             </td>
             <td><?= $ls['plays'] ? number_format($ls['avg_pts'], 1) : '-' ?></td>
+            <td><a href="/teacher/question_analysis.php?lesson_id=<?= (int)$ls['id'] ?>" class="btn btn-info btn-sm" title="تحليل أسئلة الدرس"><i class="fas fa-chart-line"></i></a></td>
           </tr>
           <?php endforeach; ?>
         </tbody>
@@ -155,7 +157,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
   <div class="card">
     <div class="card-header"><div class="card-title"><i class="fas fa-table"></i> إحصائيات الدروس</div></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>متوسط النقاط</th><th>نسبة الفوز</th></tr></thead>
+      <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>متوسط النقاط</th><th>نسبة الفوز</th><th></th></tr></thead>
       <tbody>
         <?php foreach ($lessonStats as $ls): ?>
         <tr>
@@ -163,6 +165,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
           <td><?= $ls['plays'] ?: 0 ?></td>
           <td><?= $ls['plays'] ? number_format($ls['avg_pts'], 1) : '-' ?></td>
           <td><?= $ls['plays'] ? number_format(($ls['wins'] / $ls['plays']) * 100, 0) . '%' : '-' ?></td>
+          <td><a href="/teacher/question_analysis.php?lesson_id=<?= (int)$ls['id'] ?>" class="btn btn-info btn-sm" title="تحليل الأسئلة"><i class="fas fa-chart-line"></i></a></td>
         </tr>
         <?php endforeach; ?>
       </tbody>
