@@ -79,27 +79,34 @@ if (!$existing) {
     if ($completed && $points > 0) {
         $pointsAdded = $points;
     }
-} elseif ($completed && !($hasCompleted ? (int)$existing['completed'] : ((int)$existing['points_earned'] > 0))) {
+} else {
+    $alreadyCompleted = $hasCompleted
+        ? ((int)$existing['completed'] === 1)
+        : ((int)$existing['points_earned'] > 0);
+    $isFirstWin = $completed && !$alreadyCompleted;
+
+    if ($isFirstWin) {
     // First win – upgrade existing record to completed and award points
-    $setParts = ['points_earned=?'];
-    $updateVals = [$points];
-    if ($hasScholar) {
-        $setParts[] = 'scholar_id=?';
-        $updateVals[] = $scholarId;
+        $setParts = ['points_earned=?'];
+        $updateVals = [$points];
+        if ($hasScholar) {
+            $setParts[] = 'scholar_id=?';
+            $updateVals[] = $scholarId;
+        }
+        if ($hasCompleted) {
+            $setParts[] = 'completed=1';
+        }
+        if ($hasAttempts) {
+            $setParts[] = 'attempts=attempts+1';
+        }
+        $updateVals[] = $existing['id'];
+        $db->prepare("UPDATE student_games SET " . implode(', ', $setParts) . " WHERE id=?")
+           ->execute($updateVals);
+        $pointsAdded = $points;
+    } elseif ($hasAttempts) {
+        // Replay (already completed or another loss) – just increment attempts
+        $db->prepare("UPDATE student_games SET attempts=attempts+1 WHERE id=?")->execute([$existing['id']]);
     }
-    if ($hasCompleted) {
-        $setParts[] = 'completed=1';
-    }
-    if ($hasAttempts) {
-        $setParts[] = 'attempts=attempts+1';
-    }
-    $updateVals[] = $existing['id'];
-    $db->prepare("UPDATE student_games SET " . implode(', ', $setParts) . " WHERE id=?")
-       ->execute($updateVals);
-    $pointsAdded = $points;
-} elseif ($hasAttempts) {
-    // Replay (already completed or another loss) – just increment attempts
-    $db->prepare("UPDATE student_games SET attempts=attempts+1 WHERE id=?")->execute([$existing['id']]);
 }
 
 // Award points to student (only on first win)
