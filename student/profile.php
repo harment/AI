@@ -17,6 +17,17 @@ $games = $db->prepare("SELECT sg.*, l.name AS lesson_name, sc.name AS scholar_na
 $games->execute([$student['id']]);
 $games = $games->fetchAll();
 
+$gameSummary = $db->prepare("
+  SELECT 
+    COUNT(*) AS total_games,
+    SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) AS completed_games,
+    SUM(CASE WHEN completed = 0 THEN 1 ELSE 0 END) AS incomplete_games
+  FROM student_games
+  WHERE student_id = ?
+");
+$gameSummary->execute([$student['id']]);
+$gameSummary = $gameSummary->fetch() ?: ['total_games' => 0, 'completed_games' => 0, 'incomplete_games' => 0];
+
 $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['points']}")->fetchColumn();
 ?>
 <!DOCTYPE html>
@@ -66,8 +77,13 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background:#FCE4EC;"><i class="fas fa-gamepad" style="color:#C2185B;"></i></div>
-      <div class="stat-value"><?= count(array_filter($games, fn($g) => $g['completed'])) ?></div>
-      <div class="stat-label">مغامرة مكتملة</div>
+      <div class="stat-value"><?= (int)$gameSummary['completed_games'] ?></div>
+      <div class="stat-label">مغامرات ناجحة 100%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#FFEBEE;"><i class="fas fa-times-circle" style="color:var(--danger);"></i></div>
+      <div class="stat-value"><?= (int)$gameSummary['incomplete_games'] ?></div>
+      <div class="stat-label">مغامرات غير مكتملة</div>
     </div>
   </div>
 

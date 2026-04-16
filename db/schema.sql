@@ -119,6 +119,16 @@ CREATE TABLE IF NOT EXISTS question_attempts (
     INDEX idx_qa_question (question_id)
 );
 
+-- جدول إحصائيات السؤال (ملخّص صحيح/خاطئ)
+CREATE TABLE IF NOT EXISTS question_stats (
+    question_id   INT PRIMARY KEY,
+    total_answers INT NOT NULL DEFAULT 0,
+    correct_count INT NOT NULL DEFAULT 0,
+    wrong_count   INT NOT NULL DEFAULT 0,
+    last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
 -- جدول العلماء المكتشفين من الطالب
 CREATE TABLE IF NOT EXISTS student_scholars (
     id INT AUTO_INCREMENT PRIMARY KEY,

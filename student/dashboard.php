@@ -16,6 +16,11 @@ $gamesPlayed = $db->prepare("SELECT COUNT(*) FROM student_games WHERE student_id
 $gamesPlayed->execute([$student['id']]);
 $gamesPlayed = $gamesPlayed->fetchColumn();
 
+// Student incomplete adventures
+$gamesIncomplete = $db->prepare("SELECT COUNT(*) FROM student_games WHERE student_id = ? AND completed = 0");
+$gamesIncomplete->execute([$student['id']]);
+$gamesIncomplete = $gamesIncomplete->fetchColumn();
+
 // Activity log (last 5)
 $activities = $db->prepare("SELECT al.*, l.name AS lesson_name FROM activity_log al LEFT JOIN lessons l ON l.id = al.lesson_id WHERE al.student_id = ? ORDER BY al.created_at DESC LIMIT 5");
 $activities->execute([$student['id']]);
@@ -83,6 +88,11 @@ $leaderboard = getLeaderboard(5);
       <div class="stat-icon" style="background:#FCE4EC;"><i class="fas fa-book" style="color:#C2185B;"></i></div>
       <div class="stat-value"><?= count($courses) ?></div>
       <div class="stat-label">مقررات متاحة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#FFEBEE;"><i class="fas fa-times-circle" style="color:var(--danger);"></i></div>
+      <div class="stat-value"><?= $gamesIncomplete ?></div>
+      <div class="stat-label">مغامرات غير مكتملة</div>
     </div>
   </div>
 

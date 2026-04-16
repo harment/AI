@@ -81,13 +81,24 @@ if (dbTableExists($db, 'question_answers')) {
 }
 
 if (dbTableExists($db, 'question_stats')) {
-    $db->prepare("
-        INSERT INTO question_stats (question_id, total_answers, correct_count)
-        VALUES (?, 1, ?)
-        ON DUPLICATE KEY UPDATE
-            total_answers = total_answers + 1,
-            correct_count = correct_count + VALUES(correct_count)
-    ")->execute([$questionId, $isCorrect ? 1 : 0]);
+    if (dbTableHasColumn($db, 'question_stats', 'wrong_count')) {
+        $db->prepare("
+            INSERT INTO question_stats (question_id, total_answers, correct_count, wrong_count)
+            VALUES (?, 1, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                total_answers = total_answers + 1,
+                correct_count = correct_count + VALUES(correct_count),
+                wrong_count   = wrong_count + VALUES(wrong_count)
+        ")->execute([$questionId, $isCorrect ? 1 : 0, $isCorrect ? 0 : 1]);
+    } else {
+        $db->prepare("
+            INSERT INTO question_stats (question_id, total_answers, correct_count)
+            VALUES (?, 1, ?)
+            ON DUPLICATE KEY UPDATE
+                total_answers = total_answers + 1,
+                correct_count = correct_count + VALUES(correct_count)
+        ")->execute([$questionId, $isCorrect ? 1 : 0]);
+    }
 }
 
 jsonResponse(['success' => true]);

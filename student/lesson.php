@@ -156,7 +156,7 @@ if (!empty($lesson['video_url'])) {
 <nav class="navbar">
   <div class="navbar-brand">
     <button id="sidebarToggle" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;display:none;"><i class="fas fa-bars"></i></button>
-    <span>�</span><span>المساعد الذّكاليّ</span>
+    <span>🌿</span><span>المساعد الذّكاليّ</span>
   </div>
   <ul class="navbar-nav">
     <li><a href="/student/courses.php?id=<?= $lesson['course_id'] ?>" class="nav-link"><i class="fas fa-arrow-right"></i> رجوع</a></li>
@@ -310,10 +310,10 @@ if (!empty($lesson['video_url'])) {
           <?php
             $gameIcons = [
               'mountain' => '⛰️ مغامرة الجبل',
-              'maze' => '� مغامرة المتاهة',
+              'maze' => '🌀 مغامرة المتاهة',
               'ship' => '⛵ مغامرة البحر'
             ];
-            echo $gameIcons[$lesson['game_type']] ?? '� لعبة المغامرة';
+            echo $gameIcons[$lesson['game_type']] ?? '🎮 لعبة المغامرة';
           ?>
         </div>
         <?php if (!empty($questions)): ?>
@@ -330,7 +330,7 @@ if (!empty($lesson['video_url'])) {
       <?php else: ?>
       <div id="gameIntro" style="text-align:center;padding:2rem;">
         <div style="font-size:4rem;margin-bottom:1rem;">
-          <?= ['mountain' => '⛰️', 'maze' => '�', 'ship' => '⛵'][$lesson['game_type']] ?? '�' ?>
+          <?= ['mountain' => '⛰️', 'maze' => '🌀', 'ship' => '⛵'][$lesson['game_type']] ?? '🎮' ?>
         </div>
         <h3 style="margin-bottom:.75rem;">مغامرة <?= clean($lesson['name']) ?></h3>
         <p style="color:var(--muted);max-width:480px;margin:0 auto 1.5rem;">

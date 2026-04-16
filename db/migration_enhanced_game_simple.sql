@@ -47,6 +47,30 @@ CREATE TABLE IF NOT EXISTS question_stats (
     question_id   INT PRIMARY KEY,
     total_answers INT NOT NULL DEFAULT 0,
     correct_count INT NOT NULL DEFAULT 0,
+    wrong_count   INT NOT NULL DEFAULT 0,
     last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
+
+-- 4. ضمان وجود عمود wrong_count في القواعد القديمة
+DROP PROCEDURE IF EXISTS _add_col_question_stats_wrong_count;
+DELIMITER //
+CREATE PROCEDURE _add_col_question_stats_wrong_count()
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME   = 'question_stats'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME   = 'question_stats'
+      AND COLUMN_NAME  = 'wrong_count'
+  ) THEN
+    ALTER TABLE question_stats
+      ADD COLUMN wrong_count INT NOT NULL DEFAULT 0 AFTER correct_count;
+  END IF;
+END //
+DELIMITER ;
+CALL _add_col_question_stats_wrong_count();
+DROP PROCEDURE IF EXISTS _add_col_question_stats_wrong_count;
