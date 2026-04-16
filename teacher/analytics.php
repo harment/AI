@@ -39,6 +39,11 @@ $maxPts     = $db->query("SELECT MAX(points) FROM students")->fetchColumn() ?: 0
 // Games per lesson
 $lessonStats = $db->query("SELECT l.name, COUNT(*) plays, AVG(sg.points_earned) avg_pts, SUM(sg.completed) wins FROM lessons l LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id ORDER BY plays DESC")->fetchAll();
 
+// Weak lessons: played at least once and win rate < 50%
+$weakLessons = array_filter($lessonStats, fn($ls) => $ls['plays'] > 0 && (($ls['wins'] ?? 0) / $ls['plays']) < 0.5);
+usort($weakLessons, fn($a, $b) => (($a['wins'] ?? 0) / max($a['plays'], 1)) <=> (($b['wins'] ?? 0) / max($b['plays'], 1)));
+$weakLessons = array_slice($weakLessons, 0, 5);
+
 // Time spent
 $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM students s LEFT JOIN activity_log al ON al.student_id=s.id GROUP BY s.id ORDER BY total_sec DESC LIMIT 10")->fetchAll();
 ?>
@@ -66,7 +71,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
 </aside>
 <main class="main-content">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-    <h2><i class="fas fa-chart-bar"></i> تحليل التقدم والأداء</h2>
+    <h2 style="font-size:1.4rem;"><i class="fas fa-chart-bar" style="color:var(--accent);"></i> تحليل التقدم والأداء</h2>
     <a href="?export=excel" class="btn btn-primary btn-sm"><i class="fas fa-file-excel"></i> تصدير Excel</a>
   </div>
 
@@ -112,6 +117,38 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
       <div class="card-header"><div class="card-title"><i class="fas fa-clock"></i> وقت التعلم (أعلى 10)</div></div>
       <canvas id="timeChart" height="200"></canvas>
     </div>
+  </div>
+
+  <!-- Weak points section -->
+  <div class="card" style="margin-bottom:1.5rem;border-right:4px solid var(--accent);">
+    <div class="card-header" style="border-bottom-color:var(--accent);">
+      <div class="card-title" style="font-size:1rem;color:var(--accent);"><i class="fas fa-exclamation-triangle"></i> نقاط الضعف – دروس تحتاج إلى مراجعة</div>
+    </div>
+    <?php if (empty($weakLessons)): ?>
+    <p style="color:var(--muted);font-size:.9rem;"><i class="fas fa-check-circle" style="color:var(--primary);"></i> لا توجد دروس بنسبة فوز منخفضة حالياً. عمل رائع!</p>
+    <?php else: ?>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>نسبة الفوز</th><th>متوسط النقاط</th></tr></thead>
+        <tbody>
+          <?php foreach ($weakLessons as $ls): ?>
+          <?php $rate = $ls['plays'] ? round(($ls['wins'] / $ls['plays']) * 100) : 0; ?>
+          <tr>
+            <td><strong><?= clean($ls['name']) ?></strong></td>
+            <td><?= $ls['plays'] ?></td>
+            <td>
+              <span style="color:<?= $rate < 25 ? 'var(--danger)' : 'var(--accent)'; ?>;font-weight:700;"><?= $rate ?>%</span>
+              <div style="background:#eee;border-radius:4px;height:6px;margin-top:4px;width:100px;">
+                <div style="background:<?= $rate < 25 ? 'var(--danger)' : 'var(--accent)'; ?>;width:<?= $rate ?>%;height:100%;border-radius:4px;"></div>
+              </div>
+            </td>
+            <td><?= $ls['plays'] ? number_format($ls['avg_pts'], 1) : '-' ?></td>
+          </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php endif; ?>
   </div>
 
   <!-- Lesson stats table -->

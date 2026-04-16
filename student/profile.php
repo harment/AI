@@ -74,16 +74,24 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
   <!-- Scholars collection -->
   <div class="card" style="margin-bottom:1.5rem;">
     <div class="card-header">
-      <div class="card-title"><i class="fas fa-scroll"></i> مجموعة علماء النحو (<?= count($myScholars) ?>/<?= count($allScholars) ?>)</div>
+      <div class="card-title"><i class="fas fa-scroll"></i> مجموعة علماء العربية (<?= count($myScholars) ?>/<?= count($allScholars) ?>)</div>
     </div>
     <div class="scholars-grid">
       <?php foreach ($allScholars as $sc): ?>
       <?php $isDiscovered = in_array($sc['id'], $discovered); ?>
-      <div class="scholar-chip <?= $isDiscovered ? '' : 'locked' ?>" title="<?= $isDiscovered ? clean($sc['name']) : 'لم يُكتشف بعد' ?>">
+      <?php if ($isDiscovered): ?>
+      <div class="scholar-chip" title="<?= clean($sc['name']) ?>" style="cursor:pointer;" onclick="openScholarModal(<?= (int)$sc['id'] ?>)">
         <div class="icon">📜</div>
-        <div class="sname"><?= $isDiscovered ? clean($sc['name']) : '??? مجهول' ?></div>
-        <div class="sera"><?= $isDiscovered ? clean($sc['era'] ?? '') : '🔒' ?></div>
+        <div class="sname"><?= clean($sc['name']) ?></div>
+        <div class="sera"><?= clean($sc['era'] ?? '') ?></div>
       </div>
+      <?php else: ?>
+      <div class="scholar-chip locked" title="لم يُكتشف بعد">
+        <div class="icon">📜</div>
+        <div class="sname">??? مجهول</div>
+        <div class="sera">🔒</div>
+      </div>
+      <?php endif; ?>
       <?php endforeach; ?>
     </div>
   </div>
@@ -149,7 +157,64 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
   <form class="chatbot-input" id="chatbotForm"><input type="text" id="chatbotInput" placeholder="اكتب سؤالك…" autocomplete="off"><button type="submit"><i class="fas fa-paper-plane"></i></button></form>
 </div>
 
+<!-- Scholar Details Modal -->
+<div id="scholarModal" class="modal-backdrop" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title" id="smName"></span>
+      <button class="modal-close" onclick="document.getElementById('scholarModal').style.display='none'"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="text-align:center;margin-bottom:1rem;">
+      <div style="font-size:3.5rem;margin-bottom:.5rem;">📜</div>
+      <div id="smEra" style="font-size:.85rem;color:var(--muted);"></div>
+    </div>
+    <div id="smBio" style="margin-bottom:.85rem;line-height:1.8;color:var(--text);"></div>
+    <div id="smWorks" style="font-size:.88rem;padding:.75rem;background:#E8F5E9;border-radius:var(--radius-sm);color:#2E7D32;display:none;">
+      <strong><i class="fas fa-book-open"></i> أبرز مؤلفاته:</strong>
+      <span id="smWorksText"></span>
+    </div>
+    <div style="margin-top:1.25rem;text-align:center;">
+      <button class="btn btn-primary btn-sm" onclick="document.getElementById('scholarModal').style.display='none'">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <script src="/assets/js/app.js"></script>
-<script>if (window.innerWidth < 900) document.getElementById('sidebarToggle').style.display = 'block';</script>
+<script>
+if (window.innerWidth < 900) document.getElementById('sidebarToggle').style.display = 'block';
+
+const scholarsData = <?= json_encode(
+  array_filter(
+    array_map(fn($sc) => in_array($sc['id'], $discovered) ? [
+      'id'        => (int)$sc['id'],
+      'name'      => $sc['name'],
+      'era'       => $sc['era'] ?? '',
+      'short_bio' => $sc['short_bio'] ?? '',
+      'works'     => $sc['works'] ?? ''
+    ] : null, $allScholars)
+  ),
+  JSON_UNESCAPED_UNICODE
+) ?>;
+
+function openScholarModal(id) {
+  const sc = Object.values(scholarsData).find(s => s && s.id === id);
+  if (!sc) return;
+  document.getElementById('smName').textContent = sc.name;
+  document.getElementById('smEra').textContent   = sc.era ? '📅 ' + sc.era : '';
+  document.getElementById('smBio').textContent   = sc.short_bio;
+  const worksEl = document.getElementById('smWorks');
+  if (sc.works) {
+    document.getElementById('smWorksText').textContent = ' ' + sc.works;
+    worksEl.style.display = 'block';
+  } else {
+    worksEl.style.display = 'none';
+  }
+  document.getElementById('scholarModal').style.display = 'flex';
+}
+
+document.getElementById('scholarModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+</script>
 </body>
 </html>

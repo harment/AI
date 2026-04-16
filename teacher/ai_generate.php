@@ -1341,8 +1341,11 @@ $configuredProviders = array_keys(array_filter($envKeys));
       ?>
       <div style="margin-top:1rem;padding:.75rem;background:#E8F5E9;border-radius:var(--radius-sm);text-align:center;">
         <strong style="color:#2E7D32;"><?= $totalQuestions ?></strong> سؤال موجود
-        <a href="/teacher/edit_questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-sm btn-primary" style="margin-right:.5rem;">
+        <a href="/teacher/questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-sm btn-primary" style="margin-right:.5rem;">
           <i class="fas fa-edit"></i> تعديل
+        </a>
+        <a href="/teacher/question_analysis.php?lesson_id=<?= $lessonId ?>" class="btn btn-sm btn-info" style="margin-right:.25rem;">
+          <i class="fas fa-chart-line"></i> تحليل
         </a>
       </div>
       <?php endif; ?>
