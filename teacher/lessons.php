@@ -127,6 +127,7 @@ $lessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN cou
           <td style="display:flex;gap:.4rem;flex-wrap:wrap;">
             <a href="/teacher/ai_generate.php?lesson_id=<?= $l['id'] ?>" class="btn btn-accent btn-sm" title="توليد محتوى بالذكاء الاصطناعي"><i class="fas fa-robot"></i></a>
             <a href="/teacher/questions.php?lesson_id=<?= $l['id'] ?>" class="btn btn-info btn-sm" title="إدارة الأسئلة"><i class="fas fa-question-circle"></i></a>
+            <a href="/teacher/question_analysis.php?lesson_id=<?= $l['id'] ?>" class="btn btn-primary btn-sm" title="تحليل الأسئلة"><i class="fas fa-chart-line"></i></a>
             <a href="?action=delete&id=<?= $l['id'] ?><?= $courseFilter ? "&course_id=$courseFilter" : '' ?>" class="btn btn-danger btn-sm" data-confirm="حذف الدرس وجميع أسئلته؟" title="حذف"><i class="fas fa-trash"></i></a>
           </td>
         </tr>

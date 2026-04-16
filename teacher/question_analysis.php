@@ -4,15 +4,21 @@ $teacher  = requireTeacher();
 $db       = getDB();
 $lessonId = (int)($_GET['lesson_id'] ?? 0);
 
-if (!$lessonId) { header('Location: /teacher/lessons.php'); exit; }
+// All lessons (needed for picker)
+$allLessons = $db->query(
+    "SELECT l.id, l.name, c.name AS course_name FROM lessons l JOIN courses c ON c.id=l.course_id ORDER BY c.id, l.sort_order, l.id"
+)->fetchAll();
 
-$lesson = $db->prepare("SELECT l.*, c.name AS course_name FROM lessons l JOIN courses c ON c.id = l.course_id WHERE l.id = ?");
-$lesson->execute([$lessonId]);
-$lesson = $lesson->fetch();
-if (!$lesson) { header('Location: /teacher/lessons.php'); exit; }
+$lesson = null;
+if ($lessonId) {
+    $stmt = $db->prepare("SELECT l.*, c.name AS course_name FROM lessons l JOIN courses c ON c.id = l.course_id WHERE l.id = ?");
+    $stmt->execute([$lessonId]);
+    $lesson = $stmt->fetch() ?: null;
+    if (!$lesson) { $lessonId = 0; }
+}
 
 // ===================== AJAX: تحليل الذكاء الاصطناعي =====================
-if (isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
+if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     @ini_set('display_errors', 0);
     header('Content-Type: application/json; charset=utf-8');
 
@@ -97,53 +103,54 @@ if (isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     exit;
 }
 
-// ===================== بيانات الصفحة =====================
-$questions = $db->prepare("SELECT * FROM questions WHERE lesson_id=? ORDER BY sort_order, id");
-$questions->execute([$lessonId]);
-$questions = $questions->fetchAll();
+// ===================== بيانات الصفحة (فقط عند اختيار درس) =====================
+$questions    = [];
+$gameStats    = null;
+$studentPerf  = [];
+$hasQA        = false;
+$qaStats      = [];
+$claudeKey    = defined('ANTHROPIC_API_KEY') ? ANTHROPIC_API_KEY : '';
+$geminiKey    = defined('GEMINI_API_KEY')    ? GEMINI_API_KEY    : '';
+$openaiKey    = defined('OPENAI_API_KEY')    ? OPENAI_API_KEY    : '';
 
-$gameStats = $db->prepare(
-    "SELECT COUNT(*) total, SUM(completed) wins, AVG(points_earned) avg_pts, AVG(attempts) avg_att
-     FROM student_games WHERE lesson_id=?"
-);
-$gameStats->execute([$lessonId]);
-$gameStats = $gameStats->fetch();
+if ($lesson) {
+    $questions = $db->prepare("SELECT * FROM questions WHERE lesson_id=? ORDER BY sort_order, id");
+    $questions->execute([$lessonId]);
+    $questions = $questions->fetchAll();
 
-$studentPerf = $db->prepare(
-    "SELECT s.id, s.name, COUNT(sg.id) plays, SUM(sg.completed) wins,
-            AVG(sg.points_earned) avg_pts, MAX(sg.played_at) last_play
-     FROM students s
-     JOIN student_games sg ON sg.student_id=s.id
-     WHERE sg.lesson_id=?
-     GROUP BY s.id ORDER BY wins DESC, avg_pts DESC"
-);
-$studentPerf->execute([$lessonId]);
-$studentPerf = $studentPerf->fetchAll();
-
-// إحصائيات السؤال التفصيلية
-$hasQA = false;
-try { $db->query("SELECT 1 FROM question_answers LIMIT 1"); $hasQA = true; } catch (Exception $e) {}
-
-$qaStats = [];
-if ($hasQA) {
-    $qaRows = $db->prepare(
-        "SELECT qa.question_id, COUNT(*) total, SUM(qa.is_correct) correct_count,
-                q.question_text, q.correct_option
-         FROM question_answers qa
-         JOIN questions q ON q.id=qa.question_id
-         WHERE qa.lesson_id=?
-         GROUP BY qa.question_id ORDER BY (SUM(qa.is_correct)/COUNT(*)) ASC"
+    $gameStats = $db->prepare(
+        "SELECT COUNT(*) total, SUM(completed) wins, AVG(points_earned) avg_pts, AVG(attempts) avg_att
+         FROM student_games WHERE lesson_id=?"
     );
-    $qaRows->execute([$lessonId]);
-    $qaStats = $qaRows->fetchAll();
-}
+    $gameStats->execute([$lessonId]);
+    $gameStats = $gameStats->fetch();
 
-// مفاتيح API
-$claudeKey  = defined('ANTHROPIC_API_KEY') ? ANTHROPIC_API_KEY : '';
-$geminiKey  = defined('GEMINI_API_KEY')    ? GEMINI_API_KEY    : '';
-$openaiKey  = defined('OPENAI_API_KEY')    ? OPENAI_API_KEY    : '';
-$hasAIKey   = !empty($claudeKey) || !empty($geminiKey) || !empty($openaiKey);
-$defaultProvider = !empty($claudeKey) ? 'claude' : (!empty($geminiKey) ? 'gemini' : 'openai');
+    $studentPerf = $db->prepare(
+        "SELECT s.id, s.name, COUNT(sg.id) plays, SUM(sg.completed) wins,
+                AVG(sg.points_earned) avg_pts, MAX(sg.played_at) last_play
+         FROM students s
+         JOIN student_games sg ON sg.student_id=s.id
+         WHERE sg.lesson_id=?
+         GROUP BY s.id ORDER BY wins DESC, avg_pts DESC"
+    );
+    $studentPerf->execute([$lessonId]);
+    $studentPerf = $studentPerf->fetchAll();
+
+    try { $db->query("SELECT 1 FROM question_answers LIMIT 1"); $hasQA = true; } catch (Exception $e) {}
+
+    if ($hasQA) {
+        $qaRows = $db->prepare(
+            "SELECT qa.question_id, COUNT(*) total, SUM(qa.is_correct) correct_count,
+                    q.question_text, q.correct_option
+             FROM question_answers qa
+             JOIN questions q ON q.id=qa.question_id
+             WHERE qa.lesson_id=?
+             GROUP BY qa.question_id ORDER BY (SUM(qa.is_correct)/COUNT(*)) ASC"
+        );
+        $qaRows->execute([$lessonId]);
+        $qaStats = $qaRows->fetchAll();
+    }
+}
 
 // ===================== دالة استدعاء الذكاء =====================
 function callAIProvider(string $prompt, string $apiKey, string $provider): array {
@@ -206,7 +213,7 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>تحليل الأسئلة – <?= clean($lesson['name']) ?></title>
+  <title>تحليل الأسئلة<?= $lesson ? ' – ' . clean($lesson['name']) : '' ?></title>
   <link rel="stylesheet" href="/assets/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -225,13 +232,47 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
   <a href="/teacher/analytics.php" class="sidebar-link"><i class="fas fa-chart-bar"></i> التحليلات</a>
 </aside>
 <main class="main-content">
+
+  <?php if (!$lesson): ?>
+  <!-- ======= منتقي الدرس ======= -->
+  <h2 style="font-size:1.4rem;margin-bottom:1.5rem;"><i class="fas fa-chart-line" style="color:var(--accent);"></i> تحليل الأسئلة</h2>
+
+  <div class="card" style="max-width:520px;">
+    <div class="card-header"><div class="card-title"><i class="fas fa-layer-group"></i> اختر الدرس</div></div>
+    <form method="GET">
+      <div class="form-group">
+        <label class="form-label">الدرس</label>
+        <select name="lesson_id" class="form-control" required onchange="this.form.submit()">
+          <option value="">— اختر درساً —</option>
+          <?php
+          $lastCourse = '';
+          foreach ($allLessons as $l):
+            if ($l['course_name'] !== $lastCourse):
+              if ($lastCourse !== '') echo '</optgroup>';
+              echo '<optgroup label="' . htmlspecialchars($l['course_name'], ENT_QUOTES, 'UTF-8') . '">';
+              $lastCourse = $l['course_name'];
+            endif;
+          ?>
+          <option value="<?= (int)$l['id'] ?>"><?= clean($l['name']) ?></option>
+          <?php endforeach; if ($lastCourse !== '') echo '</optgroup>'; ?>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-chart-line"></i> عرض التحليل</button>
+    </form>
+  </div>
+
+  <?php else: ?>
+  <!-- ======= تحليل الدرس المحدد ======= -->
   <div style="margin-bottom:.75rem;font-size:.88rem;color:var(--muted);">
     <a href="/teacher/lessons.php">الدروس</a> / <a href="/teacher/questions.php?lesson_id=<?= $lessonId ?>"><?= clean($lesson['name']) ?></a> / <strong>تحليل الأسئلة</strong>
   </div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
     <h2 style="font-size:1.4rem;"><i class="fas fa-chart-line" style="color:var(--accent);"></i> تحليل الأسئلة: <?= clean($lesson['name']) ?></h2>
-    <a href="/teacher/questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-right"></i> الأسئلة</a>
+    <div style="display:flex;gap:.5rem;">
+      <a href="/teacher/question_analysis.php" class="btn btn-outline btn-sm"><i class="fas fa-layer-group"></i> درس آخر</a>
+      <a href="/teacher/questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-outline btn-sm"><i class="fas fa-arrow-right"></i> الأسئلة</a>
+    </div>
   </div>
 
   <!-- إحصائيات عامة -->
@@ -345,6 +386,7 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
     <div id="aiResult" style="display:none;margin-top:1rem;padding:1.25rem;background:#F9FBE7;border-radius:var(--radius-sm);border:1px solid #DCE775;"></div>
     <div id="aiError"  style="display:none;margin-top:.75rem;" class="alert alert-danger"></div>
   </div>
+  <?php endif; // end else (lesson selected) ?>
 </main>
 
 <script src="/assets/js/app.js"></script>
