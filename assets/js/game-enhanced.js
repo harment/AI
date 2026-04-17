@@ -9,6 +9,7 @@ class AdventureGame {
     this.current = 0;
     this.score = 0;
     this.errors = 0;
+    this.totalWrongAnswers = 0;
     this.questionAttempts = 0;
     this.startedAt = Date.now();
     this.resultSaved = false;
@@ -16,7 +17,7 @@ class AdventureGame {
     this.correctQuestionNumbers = [];
     this.wrongQuestionNumbers = [];
     this.questionOutcomes = [];
-    this.maxErrors = 2;
+    this.maxWrongAnswers = 2;
     this._bindUnload();
     this.render();
   }
@@ -123,11 +124,26 @@ class AdventureGame {
     }
 
     this.questionAttempts += 1;
+    this.totalWrongAnswers += 1;
     if (choiceBtn) {
       choiceBtn.classList.add('wrong');
       choiceBtn.disabled = true;
     }
     this._recordAttempt(question.id, false, this.questionAttempts);
+
+    // Check if total wrong answers across all questions reached the limit
+    if (this.totalWrongAnswers >= this.maxWrongAnswers) {
+      options.querySelectorAll('.enhanced-option').forEach((btn) => {
+        btn.disabled = true;
+        if (btn.dataset.key === question.correct_option) btn.classList.add('correct');
+      });
+      this.errors += 1;
+      this._pushUnique(this.wrongQuestionNumbers, this.current + 1);
+      this._setFeedback('wrong', 'أخطأت مرتين! انتهت المغامرة.');
+      this._finalizeQuestion('wrong', this.questionAttempts, null, true);
+      this._showFailureResult();
+      return;
+    }
 
     if (this.questionAttempts >= 2) {
       options.querySelectorAll('.enhanced-option').forEach((btn) => {
@@ -137,11 +153,6 @@ class AdventureGame {
       this.errors += 1;
       this._pushUnique(this.wrongQuestionNumbers, this.current + 1);
       this._setFeedback('wrong', question.feedback_correct || 'الإجابة الصحيحة مميزة باللون الأخضر.');
-      if (this.errors >= this.maxErrors) {
-        this._finalizeQuestion('wrong', this.questionAttempts, null, true);
-        this._showFailureResult();
-        return;
-      }
       this._finalizeQuestion('wrong', this.questionAttempts, nextBtn);
     } else {
       this._setFeedback('warning', 'إجابة غير صحيحة، لديك محاولة ثانية.');
@@ -193,8 +204,8 @@ class AdventureGame {
     const total = this.questions.length;
     const completedCount = this.questionOutcomes.length;
     const incompleteCount = Math.max(0, total - completedCount);
-    const points = Math.round(350 * (this.score / Math.max(1, total)));
     const won = this.score >= total && total > 0;
+    const points = won ? Math.round(350 * (this.score / Math.max(1, total))) : 0;
     const scholar = (won && this.scholars.length)
       ? this.scholars[Math.floor(Math.random() * this.scholars.length)]
       : null;
@@ -289,6 +300,7 @@ class AdventureGame {
     this.current = 0;
     this.score = 0;
     this.errors = 0;
+    this.totalWrongAnswers = 0;
     this.questionAttempts = 0;
     this.questions = AdventureGame.pickRandomQuestions(this.questionsPool, 5);
     this.correctQuestionNumbers = [];

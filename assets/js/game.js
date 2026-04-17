@@ -11,9 +11,11 @@ class AdventureGame {
     this.container        = document.getElementById(options.containerId || 'gameContainer');
     this.current          = 0;
     this.errors           = 0;
+    this.totalWrongAnswers = 0;
     this.score            = 0;
     this.questionAttempts = 0;
     this.completed        = false;
+    this.maxWrongAnswers  = 2;
     this.BASE_PTS         = options.basePoints || 350;
     this.sounds           = {
       correct : new Audio('/assets/sounds/correct.mp3'),
@@ -102,12 +104,29 @@ class AdventureGame {
       this._markDoneAndAdvance(next);
     } else {
       this.questionAttempts++;
+      this.totalWrongAnswers++;
       this._playSound('wrong');
       chosenBtn.classList.add('wrong');
       chosenBtn.disabled = true;
 
+      // Check if total wrong answers reached the limit
+      if (this.totalWrongAnswers >= this.maxWrongAnswers) {
+        opts.querySelectorAll('.option-btn').forEach(b => {
+          b.disabled = true;
+          if (b.dataset.key === q.correct_option) b.classList.add('correct');
+        });
+        fb.style.background = '#FFEBEE';
+        fb.style.color      = '#C62828';
+        fb.innerHTML        = '😵‍💫 أخطأت مرتين! انتهت المغامرة.';
+        fb.style.display    = 'block';
+        this.errors++;
+        this._recordAttempt(q.id, false, this.questionAttempts);
+        this._showFailureResult();
+        return;
+      }
+
       if (this.questionAttempts >= 2) {
-        // Second wrong attempt: reveal correct answer with feedback
+        // Second wrong attempt on same question: reveal correct answer
         opts.querySelectorAll('.option-btn').forEach(b => {
           b.disabled = true;
           if (b.dataset.key === q.correct_option) b.classList.add('correct');
@@ -149,8 +168,9 @@ class AdventureGame {
     document.getElementById(`dot-${this.current}`)?.classList.add('done');
     this.current++;
     if (this.current >= this.questions.length) {
+      const won = this.score >= this.questions.length && this.questions.length > 0;
       nextBtn.textContent = '🏁 انهاء المغامرة';
-      nextBtn.onclick     = () => this._showResult(true);
+      nextBtn.onclick     = () => this._showResult(won);
     } else {
       nextBtn.textContent = 'التالي ←';
       nextBtn.onclick     = () => this._nextQuestion();
@@ -177,10 +197,11 @@ class AdventureGame {
     <div class="game-result-box">
       <div class="result-icon">${won ? '🏆' : '😔'}</div>
       <div class="result-title" style="color:${won ? 'var(--primary)' : 'var(--danger)'}">
-        ${won ? 'مبروك! اجتزت المغامرة' : 'حاول مرة أخرى!'}
+        ${won ? 'مبروك! اجتزت المغامرة' : 'مغامرة غير مكتملة'}
       </div>
       <div style="color:var(--muted);margin:.5rem 0;">الإجابات الصحيحة: ${this.score} من ${this.questions.length}</div>
-      ${pts ? `<div class="result-points">+${pts} نقطة</div>` : ''}
+      <div style="color:var(--muted);margin:.25rem 0;">الحالة: <strong>${won ? 'مكتملة 100%' : 'غير مكتملة 100%'}</strong></div>
+      ${pts ? `<div class="result-points">+${pts} نقطة</div>` : '<div style="color:var(--danger);margin:.25rem 0;">النقاط المكتسبة: 0</div>'}
       ${scholar ? `<div class="scholar-card">
         <div class="scholar-img">📜</div>
         <div class="scholar-name">اكتشفت: ${scholar.name}</div>
@@ -198,9 +219,31 @@ class AdventureGame {
     this._saveResult(won, pts, scholar?.id || null);
   }
 
+  _showFailureResult() {
+    this._playSound('lose');
+    const overlay = document.getElementById('gameOverlay');
+    if (!overlay) return;
+    overlay.innerHTML = `
+    <div class="game-result-box">
+      <div class="result-icon">😵‍💫💥</div>
+      <div class="result-title" style="color:var(--danger)">سقطت في المغامرة!</div>
+      <div style="color:var(--muted);margin:.5rem 0;">لقد أخطأت مرتين، لذلك انتهت المغامرة مباشرة.</div>
+      <div style="color:var(--muted);margin:.25rem 0;">الحالة: <strong>غير مكتملة 100%</strong></div>
+      <div style="color:var(--danger);margin:.25rem 0;">النقاط المكتسبة: <strong>0</strong></div>
+      <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;">
+        <button class="btn btn-primary" onclick="window.adventureGame.restart()">🔄 إعادة المحاولة</button>
+        <button class="btn btn-outline" onclick="window.location.reload()">🚪 خروج من اللعبة</button>
+      </div>
+    </div>`;
+    overlay.style.display = 'flex';
+
+    this._saveResult(false, 0, null);
+  }
+
   restart() {
     this.current          = 0;
     this.errors           = 0;
+    this.totalWrongAnswers = 0;
     this.score            = 0;
     this.questionAttempts = 0;
     this.render();
