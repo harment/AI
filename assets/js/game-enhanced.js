@@ -16,6 +16,7 @@ class AdventureGame {
     this.correctQuestionNumbers = [];
     this.wrongQuestionNumbers = [];
     this.questionOutcomes = [];
+    this.maxErrors = 2;
     this._bindUnload();
     this.render();
   }
@@ -136,13 +137,18 @@ class AdventureGame {
       this.errors += 1;
       this._pushUnique(this.wrongQuestionNumbers, this.current + 1);
       this._setFeedback('wrong', question.feedback_correct || 'الإجابة الصحيحة مميزة باللون الأخضر.');
+      if (this.errors >= this.maxErrors) {
+        this._finalizeQuestion('wrong', this.questionAttempts, null, true);
+        this._showFailureResult();
+        return;
+      }
       this._finalizeQuestion('wrong', this.questionAttempts, nextBtn);
     } else {
       this._setFeedback('warning', 'إجابة غير صحيحة، لديك محاولة ثانية.');
     }
   }
 
-  _finalizeQuestion(status, attemptsUsed, nextBtn) {
+  _finalizeQuestion(status, attemptsUsed, nextBtn, stopGame = false) {
     const question = this.questions[this.current];
     this.questionOutcomes.push({
       question_number: this.current + 1,
@@ -153,6 +159,8 @@ class AdventureGame {
 
     const step = document.getElementById(`step-${this.current}`);
     if (step) step.classList.add('done');
+
+    if (stopGame) return;
 
     this.current += 1;
     if (this.current >= this.questions.length) {
@@ -193,7 +201,7 @@ class AdventureGame {
 
     this.completed = true;
     this._saveResult({
-      completed: 1,
+      completed: won ? 1 : 0,
       points,
       scholarId: scholar?.id || null,
       completedQuestions: completedCount,
@@ -213,6 +221,68 @@ class AdventureGame {
       </div>
     `;
     document.getElementById('enhancedReplayBtn')?.addEventListener('click', () => this.restart());
+  }
+
+  _showFailureResult() {
+    const total = this.questions.length;
+    const completedCount = this.questionOutcomes.length;
+    const incompleteCount = Math.max(0, total - completedCount);
+
+    this.completed = true;
+    this._saveResult({
+      completed: 0,
+      points: 0,
+      scholarId: null,
+      completedQuestions: completedCount,
+      incompleteQuestions: incompleteCount
+    });
+    this._playFallSound();
+
+    if (!this.container) return;
+    this.container.innerHTML = `
+      <div class="enhanced-result">
+        <div class="emoji">😵‍💫💥</div>
+        <h3>سقطت في المغامرة!</h3>
+        <p>لقد أخطأت مرتين، لذلك انتهت المغامرة مباشرة.</p>
+        <p>الحالة: <strong>غير مكتملة 100%</strong></p>
+        <p>النقاط المكتسبة: <strong>0</strong></p>
+        <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="enhancedReplayBtn">🔄 إعادة المحاولة</button>
+          <button class="btn btn-outline" id="enhancedExitBtn">🚪 خروج من اللعبة</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('enhancedReplayBtn')?.addEventListener('click', () => this.restart());
+    document.getElementById('enhancedExitBtn')?.addEventListener('click', () => window.location.reload());
+  }
+
+  _playFallSound() {
+    try {
+      const loseSound = new Audio('/assets/sounds/lose.mp3');
+      loseSound.volume = 0.85;
+      loseSound.play().catch(() => this._playGeneratedFallSound());
+    } catch (_) {
+      this._playGeneratedFallSound();
+    }
+  }
+
+  _playGeneratedFallSound() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(75, ctx.currentTime + 0.7);
+      gain.gain.setValueAtTime(0.22, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.75);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.75);
+    } catch (_) {}
   }
 
   restart() {
