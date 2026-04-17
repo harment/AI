@@ -151,7 +151,7 @@ if (!empty($lesson['video_url'])) {
     to { transform: rotate(360deg); }
   }
   </style>
-  <link rel="stylesheet" href="/assets/css/game-enhanced.css?v=5">
+  <link rel="stylesheet" href="/assets/css/game-enhanced.css?v=6">
 </head>
 <body data-lesson-id="<?= $lessonId ?>">
 <nav class="navbar">
@@ -421,8 +421,8 @@ if (!empty($lesson['video_url'])) {
 </div>
 
 <script src="/assets/js/app.js"></script>
-<script src="/assets/js/game-enhanced.js?v=5"></script>
-<script src="/assets/js/game-map-simple.js?v=5"></script>
+<script src="/assets/js/game-enhanced.js?v=6"></script>
+<script src="/assets/js/game-map-simple.js?v=6"></script>
 <style>
 .game-mode-card {
   background: white;

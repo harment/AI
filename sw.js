@@ -1,7 +1,7 @@
 // =============================================
 // Service Worker – المساعد الذّكاليّ
 // =============================================
-const CACHE_NAME = 'dhakali-v6';
+const CACHE_NAME = 'dhakali-v7';
 const STATIC_ASSETS = [
   '/',
   '/assets/css/style.css',
