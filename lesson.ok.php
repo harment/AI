@@ -151,7 +151,7 @@ if (!empty($lesson['video_url'])) {
     to { transform: rotate(360deg); }
   }
   </style>
-  <link rel="stylesheet" href="/assets/css/game-enhanced.css">
+  <link rel="stylesheet" href="/assets/css/game-enhanced.css?v=4">
 </head>
 <body data-lesson-id="<?= $lessonId ?>">
 <nav class="navbar">

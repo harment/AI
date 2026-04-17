@@ -1,10 +1,11 @@
 // =============================================
 // Service Worker – المساعد الذّكاليّ
 // =============================================
-const CACHE_NAME = 'dhakali-v4';
+const CACHE_NAME = 'dhakali-v5';
 const STATIC_ASSETS = [
   '/',
   '/assets/css/style.css',
+  '/assets/css/game-enhanced.css',
   '/assets/js/app.js',
   '/assets/js/game-enhanced.js',
   '/assets/js/game-map-simple.js',
