@@ -191,6 +191,20 @@
   pointer-events: none;
 }
 
+.forest-bg {
+  background: linear-gradient(to bottom, #86efac 0%, #22c55e 35%, #15803d 70%, #166534 100%);
+  position: relative;
+}
+
+.forest-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 80%, rgba(0,0,0,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 70%, rgba(0,0,0,0.06) 0%, transparent 40%);
+  pointer-events: none;
+}
+
 .island-bg {
   background: linear-gradient(to bottom, #74ebd5 0%, #ACB6E5 100%);
   position: relative;
@@ -243,10 +257,14 @@
 .map-game-wrapper {
   position: relative;
   width: 100%;
+  max-width: 650px;
   min-height: 420px;
   max-height: 500px;
   border-radius: 20px;
   overflow: hidden;
+  margin: 0 auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  border: 2px solid rgba(255,255,255,0.2);
 }
 
 .map-bg-layer {

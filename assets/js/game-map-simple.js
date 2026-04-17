@@ -45,27 +45,27 @@ class MapAdventureGame extends AdventureGame {
   }
 
   /* ── مواقع المحطات حسب النمط (نسبة مئوية من الحاوية) ── */
-  /* الجبل: تسلق من أسفل اليمين متمايلاً إلى القمة */
-  /* البحر: متعرج عبر الأمواج */
-  /* الجزيرة: مسار منحنٍ حول الشاطئ */
+  /* الجبل: تسلق من أسفل يمين الجبل متمايلاً حتى القمة */
+  /* البحيرة: متعرج عبر الأمواج كأنه يبحر */
   /* الغابة: ممر ملتوي بين الأشجار */
+  /* المتاهة: مسار حلزوني من الخارج إلى المركز */
   static getStationPositions(theme, count) {
     const positions = {
       mountain: [
-        { x: 72, y: 88 }, { x: 50, y: 75 }, { x: 68, y: 58 },
-        { x: 42, y: 45 }, { x: 58, y: 30 }, { x: 48, y: 15 }, { x: 52, y: 5 }
+        { x: 70, y: 88 }, { x: 45, y: 74 }, { x: 62, y: 58 },
+        { x: 38, y: 44 }, { x: 55, y: 28 }, { x: 48, y: 12 }, { x: 50, y: 4 }
       ],
       island: [
         { x: 80, y: 82 }, { x: 60, y: 78 }, { x: 38, y: 70 },
         { x: 25, y: 55 }, { x: 35, y: 38 }, { x: 55, y: 25 }, { x: 70, y: 12 }
       ],
       lake: [
-        { x: 15, y: 80 }, { x: 38, y: 70 }, { x: 62, y: 78 },
-        { x: 80, y: 62 }, { x: 55, y: 48 }, { x: 30, y: 35 }, { x: 50, y: 15 }
+        { x: 12, y: 82 }, { x: 35, y: 68 }, { x: 65, y: 78 },
+        { x: 82, y: 58 }, { x: 55, y: 42 }, { x: 28, y: 30 }, { x: 50, y: 12 }
       ],
       forest: [
-        { x: 75, y: 85 }, { x: 45, y: 78 }, { x: 22, y: 65 },
-        { x: 48, y: 50 }, { x: 72, y: 38 }, { x: 35, y: 22 }, { x: 55, y: 8 }
+        { x: 78, y: 88 }, { x: 42, y: 76 }, { x: 18, y: 62 },
+        { x: 50, y: 48 }, { x: 75, y: 35 }, { x: 32, y: 20 }, { x: 55, y: 6 }
       ]
     };
     const pts = positions[theme] || positions.mountain;
@@ -81,29 +81,35 @@ class MapAdventureGame extends AdventureGame {
         playerEmoji: '🧗',
         finishEmoji: '🏔️',
         decorations: [
-          { emoji: '🌤️', x: '12%', y: '8%', size: '1.8rem' },
-          { emoji: '🦅', x: '25%', y: '12%', size: '1.5rem' },
-          { emoji: '🌿', x: '8%', y: '70%', size: '1.3rem' },
-          { emoji: '🪨', x: '18%', y: '80%', size: '1.1rem' },
-          { emoji: '🌲', x: '12%', y: '88%', size: '1.4rem' },
+          { emoji: '🌤️', x: '10%', y: '6%', size: '1.8rem' },
+          { emoji: '🦅', x: '22%', y: '10%', size: '1.5rem' },
+          { emoji: '🌿', x: '6%', y: '65%', size: '1.3rem' },
+          { emoji: '🪨', x: '15%', y: '82%', size: '1.1rem' },
+          { emoji: '🌲', x: '10%', y: '90%', size: '1.4rem' },
+          { emoji: '🏳️', x: '50%', y: '2%', size: '1.2rem' },
         ],
         sceneSVG: `
           <svg class="map-scene-svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax meet">
             <rect width="400" height="300" fill="transparent"/>
-            <!-- جبل بعيد -->
-            <polygon points="30,300 120,150 210,300" fill="#6d4c22" opacity="0.2"/>
-            <polygon points="100,170 120,150 140,170" fill="#fff" opacity="0.25"/>
+            <!-- جبل بعيد يسار -->
+            <polygon points="0,300 70,170 150,300" fill="#6d4c22" opacity="0.18"/>
+            <polygon points="50,185 70,170 90,185" fill="#fff" opacity="0.2"/>
             <!-- جبل رئيسي بني كبير -->
-            <polygon points="100,300 250,35 400,300" fill="#8B6914" opacity="0.45"/>
+            <polygon points="80,300 250,30 400,300" fill="#8B6914" opacity="0.5"/>
             <!-- طبقة جبلية داكنة -->
-            <polygon points="130,300 250,55 370,300" fill="#7a5c10" opacity="0.25"/>
-            <!-- رأس أبيض ثلجي -->
-            <polygon points="228,70 250,35 272,70" fill="#fff" opacity="0.7"/>
-            <polygon points="235,80 250,50 265,80" fill="#e8e8e8" opacity="0.5"/>
-            <!-- جبل صغير يسار -->
-            <polygon points="0,300 60,200 130,300" fill="#a0782c" opacity="0.25"/>
+            <polygon points="120,300 250,50 380,300" fill="#7a5c10" opacity="0.22"/>
+            <!-- تفاصيل صخرية -->
+            <polygon points="160,300 200,200 240,300" fill="#6d4c22" opacity="0.12"/>
+            <polygon points="280,300 310,220 350,300" fill="#8B6914" opacity="0.15"/>
+            <!-- رأس أبيض ثلجي كبير -->
+            <polygon points="222,72 250,30 278,72" fill="#fff" opacity="0.75"/>
+            <polygon points="230,85 250,45 270,85" fill="#e8e8e8" opacity="0.45"/>
+            <polygon points="238,65 250,38 262,65" fill="#f0f0f0" opacity="0.55"/>
+            <!-- جبل صغير يمين -->
+            <polygon points="300,300 360,220 400,300" fill="#a0782c" opacity="0.2"/>
             <!-- عشب أسفل -->
-            <ellipse cx="200" cy="298" rx="200" ry="8" fill="#4ade80" opacity="0.2"/>
+            <ellipse cx="200" cy="298" rx="200" ry="10" fill="#4ade80" opacity="0.25"/>
+            <ellipse cx="100" cy="296" rx="60" ry="6" fill="#22c55e" opacity="0.15"/>
           </svg>`
       },
       island: {
@@ -133,67 +139,80 @@ class MapAdventureGame extends AdventureGame {
           </svg>`
       },
       lake: {
-        label: 'مغامرة البحر', emoji: '⛵',
+        label: 'مغامرة البحيرة', emoji: '⛵',
         bgClass: 'ship-bg',
-        playerEmoji: '⛵',
+        playerEmoji: '🚣',
         finishEmoji: '🏴‍☠️',
         decorations: [
-          { emoji: '🌅', x: '10%', y: '6%', size: '1.8rem' },
-          { emoji: '🐬', x: '82%', y: '45%', size: '1.5rem' },
-          { emoji: '⚓', x: '8%', y: '55%', size: '1.4rem' },
-          { emoji: '🐟', x: '88%', y: '82%', size: '1.1rem' },
-          { emoji: '🌊', x: '5%', y: '90%', size: '1.3rem' },
+          { emoji: '🌅', x: '8%', y: '4%', size: '1.8rem' },
+          { emoji: '🐬', x: '85%', y: '40%', size: '1.5rem' },
+          { emoji: '⚓', x: '6%', y: '50%', size: '1.4rem' },
+          { emoji: '🐟', x: '90%', y: '85%', size: '1.1rem' },
+          { emoji: '🌊', x: '3%', y: '92%', size: '1.3rem' },
+          { emoji: '🦈', x: '88%', y: '65%', size: '1.2rem' },
         ],
         sceneSVG: `
           <svg class="map-scene-svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax meet">
-            <!-- أمواج متعددة متحركة -->
-            <path d="M0,200 Q30,188 60,200 Q90,212 120,200 Q150,188 180,200 Q210,212 240,200 Q270,188 300,200 Q330,212 360,200 Q390,188 400,200 L400,300 L0,300 Z" fill="#0ea5e9" opacity="0.15">
+            <!-- بحيرة/بحر بأمواج متعددة -->
+            <path d="M0,180 Q30,168 60,180 Q90,192 120,180 Q150,168 180,180 Q210,192 240,180 Q270,168 300,180 Q330,192 360,180 Q390,168 400,180 L400,300 L0,300 Z" fill="#0ea5e9" opacity="0.12">
               <animate attributeName="d" dur="3s" repeatCount="indefinite"
-                values="M0,200 Q30,188 60,200 Q90,212 120,200 Q150,188 180,200 Q210,212 240,200 Q270,188 300,200 Q330,212 360,200 Q390,188 400,200 L400,300 L0,300 Z;
-                        M0,200 Q30,212 60,200 Q90,188 120,200 Q150,212 180,200 Q210,188 240,200 Q270,212 300,200 Q330,188 360,200 Q390,212 400,200 L400,300 L0,300 Z;
-                        M0,200 Q30,188 60,200 Q90,212 120,200 Q150,188 180,200 Q210,212 240,200 Q270,188 300,200 Q330,212 360,200 Q390,188 400,200 L400,300 L0,300 Z"/>
+                values="M0,180 Q30,168 60,180 Q90,192 120,180 Q150,168 180,180 Q210,192 240,180 Q270,168 300,180 Q330,192 360,180 Q390,168 400,180 L400,300 L0,300 Z;
+                        M0,180 Q30,192 60,180 Q90,168 120,180 Q150,192 180,180 Q210,168 240,180 Q270,192 300,180 Q330,168 360,180 Q390,192 400,180 L400,300 L0,300 Z;
+                        M0,180 Q30,168 60,180 Q90,192 120,180 Q150,168 180,180 Q210,192 240,180 Q270,168 300,180 Q330,192 360,180 Q390,168 400,180 L400,300 L0,300 Z"/>
             </path>
-            <path d="M0,240 Q40,225 80,240 Q120,255 160,240 Q200,225 240,240 Q280,255 320,240 Q360,225 400,240 L400,300 L0,300 Z" fill="#0284c7" opacity="0.12">
+            <path d="M0,220 Q40,208 80,220 Q120,232 160,220 Q200,208 240,220 Q280,232 320,220 Q360,208 400,220 L400,300 L0,300 Z" fill="#0284c7" opacity="0.1">
               <animate attributeName="d" dur="4s" repeatCount="indefinite"
-                values="M0,240 Q40,225 80,240 Q120,255 160,240 Q200,225 240,240 Q280,255 320,240 Q360,225 400,240 L400,300 L0,300 Z;
-                        M0,240 Q40,255 80,240 Q120,225 160,240 Q200,255 240,240 Q280,225 320,240 Q360,255 400,240 L400,300 L0,300 Z;
-                        M0,240 Q40,225 80,240 Q120,255 160,240 Q200,225 240,240 Q280,255 320,240 Q360,225 400,240 L400,300 L0,300 Z"/>
+                values="M0,220 Q40,208 80,220 Q120,232 160,220 Q200,208 240,220 Q280,232 320,220 Q360,208 400,220 L400,300 L0,300 Z;
+                        M0,220 Q40,232 80,220 Q120,208 160,220 Q200,232 240,220 Q280,208 320,220 Q360,232 400,220 L400,300 L0,300 Z;
+                        M0,220 Q40,208 80,220 Q120,232 160,220 Q200,208 240,220 Q280,232 320,220 Q360,208 400,220 L400,300 L0,300 Z"/>
             </path>
-            <!-- سفينة خشبية -->
-            <polygon points="160,175 240,175 250,195 150,195" fill="#8B6914" opacity="0.3"/>
-            <line x1="200" y1="145" x2="200" y2="175" stroke="#666" stroke-width="2" opacity="0.3"/>
-            <polygon points="200,145 220,158 200,175" fill="#fff" opacity="0.35"/>
+            <path d="M0,260 Q50,248 100,260 Q150,272 200,260 Q250,248 300,260 Q350,272 400,260 L400,300 L0,300 Z" fill="#0369a1" opacity="0.08">
+              <animate attributeName="d" dur="5s" repeatCount="indefinite"
+                values="M0,260 Q50,248 100,260 Q150,272 200,260 Q250,248 300,260 Q350,272 400,260 L400,300 L0,300 Z;
+                        M0,260 Q50,272 100,260 Q150,248 200,260 Q250,272 300,260 Q350,248 400,260 L400,300 L0,300 Z;
+                        M0,260 Q50,248 100,260 Q150,272 200,260 Q250,248 300,260 Q350,272 400,260 L400,300 L0,300 Z"/>
+            </path>
+            <!-- قارب صغير خشبي -->
+            <polygon points="170,155 230,155 240,175 160,175" fill="#8B6914" opacity="0.25"/>
+            <line x1="200" y1="125" x2="200" y2="155" stroke="#666" stroke-width="2" opacity="0.25"/>
+            <polygon points="200,125 218,140 200,155" fill="#fff" opacity="0.3"/>
           </svg>`
       },
       forest: {
         label: 'مغامرة الغابة', emoji: '🌲',
-        bgClass: 'maze-bg',
-        playerEmoji: '🏃',
+        bgClass: 'forest-bg',
+        playerEmoji: '🧭',
         finishEmoji: '🏆',
         decorations: [
-          { emoji: '🍃', x: '85%', y: '8%', size: '1.5rem' },
-          { emoji: '🦊', x: '10%', y: '72%', size: '1.4rem' },
-          { emoji: '🍄', x: '82%', y: '82%', size: '1.1rem' },
-          { emoji: '🌿', x: '5%', y: '45%', size: '1.2rem' },
-          { emoji: '🦉', x: '88%', y: '30%', size: '1.3rem' },
+          { emoji: '🍃', x: '88%', y: '6%', size: '1.5rem' },
+          { emoji: '🦊', x: '8%', y: '75%', size: '1.4rem' },
+          { emoji: '🍄', x: '85%', y: '85%', size: '1.1rem' },
+          { emoji: '🌿', x: '4%', y: '42%', size: '1.2rem' },
+          { emoji: '🦉', x: '90%', y: '28%', size: '1.3rem' },
+          { emoji: '🦋', x: '15%', y: '15%', size: '1.1rem' },
         ],
         sceneSVG: `
           <svg class="map-scene-svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMax meet">
-            <!-- أشجار كبيرة -->
-            <polygon points="50,300 75,140 100,300" fill="#15803d" opacity="0.3"/>
-            <polygon points="30,300 75,165 120,300" fill="#166534" opacity="0.2"/>
-            <rect x="70" y="240" width="10" height="60" fill="#92400e" opacity="0.3"/>
+            <!-- أشجار كبيرة يسار -->
+            <polygon points="40,300 65,120 90,300" fill="#15803d" opacity="0.32"/>
+            <polygon points="25,300 65,145 105,300" fill="#166534" opacity="0.18"/>
+            <rect x="60" y="235" width="10" height="65" fill="#92400e" opacity="0.3" rx="2"/>
             <!-- شجرة وسط -->
-            <polygon points="150,300 180,110 210,300" fill="#22c55e" opacity="0.25"/>
-            <rect x="175" y="240" width="10" height="60" fill="#78350f" opacity="0.3"/>
+            <polygon points="155,300 185,95 215,300" fill="#22c55e" opacity="0.28"/>
+            <polygon points="140,300 185,115 230,300" fill="#16a34a" opacity="0.15"/>
+            <rect x="180" y="230" width="10" height="70" fill="#78350f" opacity="0.3" rx="2"/>
             <!-- شجرة يمين -->
-            <polygon points="300,300 330,130 360,300" fill="#15803d" opacity="0.25"/>
-            <rect x="325" y="250" width="10" height="50" fill="#92400e" opacity="0.25"/>
+            <polygon points="300,300 325,110 350,300" fill="#15803d" opacity="0.28"/>
+            <polygon points="285,300 325,130 365,300" fill="#166534" opacity="0.15"/>
+            <rect x="320" y="245" width="10" height="55" fill="#92400e" opacity="0.25" rx="2"/>
             <!-- شجيرات صغيرة -->
-            <ellipse cx="240" cy="290" rx="25" ry="12" fill="#22c55e" opacity="0.2"/>
-            <ellipse cx="380" cy="292" rx="20" ry="10" fill="#16a34a" opacity="0.2"/>
+            <ellipse cx="120" cy="288" rx="22" ry="14" fill="#22c55e" opacity="0.22"/>
+            <ellipse cx="260" cy="290" rx="28" ry="12" fill="#16a34a" opacity="0.2"/>
+            <ellipse cx="380" cy="292" rx="18" ry="10" fill="#22c55e" opacity="0.18"/>
+            <!-- ممر أرضي -->
+            <path d="M380,298 Q300,285 250,290 Q180,296 120,286 Q60,278 0,292 L0,300 L400,300 Z" fill="#92400e" opacity="0.12"/>
             <!-- عشب -->
-            <rect x="0" y="285" width="400" height="15" fill="#166534" opacity="0.15" rx="5"/>
+            <rect x="0" y="288" width="400" height="12" fill="#166534" opacity="0.12" rx="5"/>
           </svg>`
       }
     };
@@ -209,16 +228,30 @@ class MapAdventureGame extends AdventureGame {
       `<div class="map-decoration" style="left:${d.x};top:${d.y};font-size:${d.size};">${d.emoji}</div>`
     ).join('');
 
-    // رسم مسار متصل بين المحطات عبر SVG
-    const pathPoints = stationPositions.map(p => `${p.x * 4},${p.y * 3}`).join(' ');
+    // رسم مسار منحنٍ بين المحطات عبر SVG (bezier curve)
+    let pathD = '';
+    if (stationPositions.length > 0) {
+      const pts = stationPositions.map(p => ({ x: p.x * 4, y: p.y * 3 }));
+      pathD = `M${pts[0].x},${pts[0].y}`;
+      for (let i = 1; i < pts.length; i++) {
+        const prev = pts[i - 1];
+        const curr = pts[i];
+        const cpx1 = prev.x + (curr.x - prev.x) * 0.5;
+        const cpy1 = prev.y;
+        const cpx2 = prev.x + (curr.x - prev.x) * 0.5;
+        const cpy2 = curr.y;
+        pathD += ` C${cpx1},${cpy1} ${cpx2},${cpy2} ${curr.x},${curr.y}`;
+      }
+    }
 
     // بناء المحطات بمواقع مطلقة على الخريطة
     const stationsHTML = this.questions.map((_, i) => {
       const pos = stationPositions[i] || { x: 50, y: 50 };
       const stateClass = i === 0 ? 'map-station-current' : '';
+      const isLast = i === this.questions.length - 1;
       return `<div class="map-station map-station-abs ${stateClass}" id="mapStation-${i}" data-index="${i}"
                 style="left:${pos.x}%;top:${pos.y}%;">
-        <div class="map-station-circle">${i + 1}</div>
+        <div class="map-station-circle">${isLast ? theme.finishEmoji : (i + 1)}</div>
       </div>`;
     }).join('');
 
@@ -229,9 +262,9 @@ class MapAdventureGame extends AdventureGame {
       <div class="map-game-wrapper">
         <div class="map-bg-layer ${theme.bgClass}"></div>
         ${theme.sceneSVG || ''}
-        <!-- مسار خط منقط بين المحطات -->
+        <!-- مسار منحنٍ بين المحطات -->
         <svg class="map-path-svg" viewBox="0 0 400 300" preserveAspectRatio="none">
-          <polyline points="${pathPoints}" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" stroke-dasharray="8,5" stroke-linecap="round"/>
+          <path d="${pathD}" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="3" stroke-dasharray="10,6" stroke-linecap="round"/>
         </svg>
         ${decorationsHTML}
         ${stationsHTML}
