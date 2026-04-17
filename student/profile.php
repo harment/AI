@@ -8,8 +8,8 @@ $myScholars = $db->prepare("SELECT s.* FROM scholars s JOIN student_scholars ss 
 $myScholars->execute([$student['id']]);
 $myScholars = $myScholars->fetchAll();
 
-// All scholars (for display)
-$allScholars = $db->query("SELECT id, name, era FROM scholars ORDER BY id")->fetchAll();
+// All scholars (for display + modal details)
+$allScholars = $db->query("SELECT id, name, era, short_bio, works FROM scholars ORDER BY id")->fetchAll();
 $discovered  = array_column($myScholars, 'id');
 
 // Game history
@@ -83,7 +83,7 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
     <div class="stat-card">
       <div class="stat-icon" style="background:#FFEBEE;"><i class="fas fa-times-circle" style="color:var(--danger);"></i></div>
       <div class="stat-value"><?= (int)$gameSummary['incomplete_games'] ?></div>
-      <div class="stat-label">مغامرات غير مكتملة</div>
+      <div class="stat-label">مغامرات غير مكتملة 100%</div>
     </div>
   </div>
 
@@ -112,30 +112,6 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
     </div>
   </div>
 
-  <!-- Discovered scholars detail -->
-  <?php if (!empty($myScholars)): ?>
-  <div class="card" style="margin-bottom:1.5rem;">
-    <div class="card-header">
-      <div class="card-title"><i class="fas fa-book"></i> العلماء الذين اكتشفتهم</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">
-      <?php foreach ($myScholars as $sc): ?>
-      <div class="scholar-card">
-        <div class="scholar-img">📜</div>
-        <div class="scholar-name"><?= clean($sc['name']) ?></div>
-        <?php if ($sc['era']): ?>
-        <div style="font-size:.8rem;opacity:.75;margin:.25rem 0;"><?= clean($sc['era']) ?></div>
-        <?php endif; ?>
-        <div class="scholar-bio"><?= clean($sc['short_bio']) ?></div>
-        <?php if ($sc['works']): ?>
-        <div style="font-size:.82rem;margin-top:.5rem;opacity:.8;"><strong>أبرز مؤلفاته:</strong> <?= clean($sc['works']) ?></div>
-        <?php endif; ?>
-      </div>
-      <?php endforeach; ?>
-    </div>
-  </div>
-  <?php endif; ?>
-
   <!-- Game history -->
   <div class="card">
     <div class="card-header">
@@ -154,7 +130,7 @@ $rank = $db->query("SELECT COUNT(*) + 1 FROM students WHERE points > {$student['
             <td><strong style="color:var(--accent);">+<?= $g['points_earned'] ?></strong></td>
             <td><?= clean($g['scholar_name'] ?? '-') ?></td>
             <td><?= $g['attempts'] ?></td>
-            <td><?= $g['completed'] ? '<span class="badge badge-primary">✅ فوز</span>' : '<span class="badge badge-danger">❌ لم يكتمل</span>' ?></td>
+            <td><?= $g['completed'] ? '<span class="badge badge-primary">✅ مكتملة 100%</span>' : '<span class="badge badge-danger">❌ غير مكتملة 100%</span>' ?></td>
             <td style="font-size:.82rem;"><?= date('d/m/Y', strtotime($g['played_at'])) ?></td>
           </tr>
           <?php endforeach; ?>

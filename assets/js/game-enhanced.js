@@ -186,7 +186,7 @@ class AdventureGame {
     const completedCount = this.questionOutcomes.length;
     const incompleteCount = Math.max(0, total - completedCount);
     const points = Math.round(350 * (this.score / Math.max(1, total)));
-    const won = this.score > 0;
+    const won = this.score >= total && total > 0;
     const scholar = (won && this.scholars.length)
       ? this.scholars[Math.floor(Math.random() * this.scholars.length)]
       : null;
@@ -204,8 +204,9 @@ class AdventureGame {
     this.container.innerHTML = `
       <div class="enhanced-result">
         <div class="emoji">${won ? '🏆' : '✨'}</div>
-        <h3>${won ? 'أحسنت! أتممت المغامرة' : 'تم إنهاء المغامرة'}</h3>
+        <h3>${won ? 'أحسنت! أتممت المغامرة 100%' : 'مغامرة غير مكتملة 100%'}</h3>
         <p>الإجابات الصحيحة: <strong>${this.score}</strong> من <strong>${total}</strong></p>
+        <p>الحالة: <strong>${won ? 'مكتملة 100%' : 'غير مكتملة 100%'}</strong></p>
         <p>النقاط المكتسبة: <strong>${points}</strong></p>
         ${scholar ? `<div class="scholar-box">اكتشفت: <strong>${scholar.name}</strong></div>` : ''}
         <button class="btn btn-primary" id="enhancedReplayBtn">🔄 إعادة المحاولة</button>

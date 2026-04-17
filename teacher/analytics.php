@@ -82,7 +82,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-icon" style="background:#FFF3E0;"><i class="fas fa-star" style="color:var(--accent);"></i></div><div class="stat-value"><?= number_format($student['points']) ?></div><div class="stat-label">نقطة</div></div>
     <div class="stat-card"><div class="stat-icon" style="background:#E8F5E9;"><i class="fas fa-gamepad" style="color:var(--primary);"></i></div><div class="stat-value"><?= count($studentGames) ?></div><div class="stat-label">لعبة</div></div>
-    <div class="stat-card"><div class="stat-icon" style="background:#E3F2FD;"><i class="fas fa-check" style="color:var(--info);"></i></div><div class="stat-value"><?= count(array_filter($studentGames, fn($g) => $g['completed'])) ?></div><div class="stat-label">فوز</div></div>
+     <div class="stat-card"><div class="stat-icon" style="background:#E3F2FD;"><i class="fas fa-check" style="color:var(--info);"></i></div><div class="stat-value"><?= count(array_filter($studentGames, fn($g) => $g['completed'])) ?></div><div class="stat-label">مكتملة 100%</div></div>
   </div>
   <div class="card" style="margin-bottom:1.5rem;">
     <div class="card-header"><div class="card-title">سجل المغامرات</div></div>
@@ -91,7 +91,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
       <tbody>
         <?php foreach ($studentGames as $g): ?>
         <tr><td><?= clean($g['lname'] ?? '-') ?></td><td><strong style="color:var(--accent);"><?= $g['points_earned'] ?></strong></td><td><?= $g['attempts'] ?></td>
-        <td><?= $g['completed'] ? '<span class="badge badge-primary">✅ فوز</span>' : '<span class="badge badge-danger">❌</span>' ?></td>
+         <td><?= $g['completed'] ? '<span class="badge badge-primary">✅ مكتملة 100%</span>' : '<span class="badge badge-danger">❌ غير مكتملة 100%</span>' ?></td>
         <td style="font-size:.82rem;"><?= date('d/m/Y', strtotime($g['played_at'])) ?></td></tr>
         <?php endforeach; ?>
       </tbody>
@@ -130,7 +130,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
     <?php else: ?>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>نسبة الفوز</th><th>متوسط النقاط</th><th></th></tr></thead>
+        <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>نسبة الإكمال 100%</th><th>متوسط النقاط</th><th></th></tr></thead>
         <tbody>
           <?php foreach ($weakLessons as $ls): ?>
           <?php $rate = $ls['plays'] ? round(($ls['wins'] / $ls['plays']) * 100) : 0; ?>
@@ -157,7 +157,7 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
   <div class="card">
     <div class="card-header"><div class="card-title"><i class="fas fa-table"></i> إحصائيات الدروس</div></div>
     <div class="table-wrap"><table>
-      <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>متوسط النقاط</th><th>نسبة الفوز</th><th></th></tr></thead>
+      <thead><tr><th>الدرس</th><th>عدد اللعبات</th><th>متوسط النقاط</th><th>نسبة الإكمال 100%</th><th></th></tr></thead>
       <tbody>
         <?php foreach ($lessonStats as $ls): ?>
         <tr>

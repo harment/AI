@@ -372,7 +372,7 @@ if (!empty($lesson['video_url'])) {
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <i class="fas fa-redo" style="font-size:1.5rem;"></i>
-            <span><strong>3 محاولات</strong> يومياً</span>
+            <span><strong>5 محاولات</strong> يومياً</span>
           </div>
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <i class="fas fa-star" style="font-size:1.5rem;"></i>
@@ -381,6 +381,14 @@ if (!empty($lesson['video_url'])) {
           <div style="display:flex;align-items:center;gap:0.75rem;">
             <i class="fas fa-user-graduate" style="font-size:1.5rem;"></i>
             <span>اكتشف <strong>العلماء</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-check-circle" style="font-size:1.5rem;"></i>
+            <span><strong>مكتملة 100%</strong>: حل جميع الأسئلة (5/5)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <i class="fas fa-times-circle" style="font-size:1.5rem;"></i>
+            <span><strong>غير مكتملة 100%</strong>: أي نتيجة أقل من 5/5</span>
           </div>
         </div>
         

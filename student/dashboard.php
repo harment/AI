@@ -82,7 +82,7 @@ $leaderboard = getLeaderboard(5);
     <div class="stat-card">
       <div class="stat-icon" style="background:#E3F2FD;"><i class="fas fa-gamepad" style="color:var(--info);"></i></div>
       <div class="stat-value"><?= $gamesPlayed ?></div>
-      <div class="stat-label">مغامرة مكتملة</div>
+      <div class="stat-label">مغامرة مكتملة 100%</div>
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background:#FCE4EC;"><i class="fas fa-book" style="color:#C2185B;"></i></div>
@@ -92,7 +92,7 @@ $leaderboard = getLeaderboard(5);
     <div class="stat-card">
       <div class="stat-icon" style="background:#FFEBEE;"><i class="fas fa-times-circle" style="color:var(--danger);"></i></div>
       <div class="stat-value"><?= $gamesIncomplete ?></div>
-      <div class="stat-label">مغامرات غير مكتملة</div>
+      <div class="stat-label">مغامرات غير مكتملة 100%</div>
     </div>
   </div>
 

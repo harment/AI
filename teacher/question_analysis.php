@@ -17,6 +17,24 @@ if ($lessonId) {
     if (!$lesson) { $lessonId = 0; }
 }
 
+function tableExists(PDO $db, string $table): bool {
+    $stmt = $db->prepare("
+        SELECT 1
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$table]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function parseActivityDetails(?string $details): array {
+    if (!$details) return [];
+    $decoded = json_decode($details, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
 // ===================== AJAX: تحليل الذكاء الاصطناعي =====================
 if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     @ini_set('display_errors', 0);
@@ -45,37 +63,92 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     $games->execute([$lessonId]);
     $games = $games->fetchAll();
 
-    // إحصائيات السؤال التفصيلية من question_attempts
+    // إحصائيات السؤال التفصيلية (question_answers أولاً ثم question_attempts كبديل)
     $qaStats = [];
-    try {
-        $qaRows = $db->prepare(
-            "SELECT qa.question_id, q.question_text,
-                    COUNT(*) total,
-                    SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
-                    SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
-                    COUNT(DISTINCT qa.student_id) students_count
-             FROM question_attempts qa
-             JOIN questions q ON q.id=qa.question_id
-             WHERE qa.lesson_id=?
-             GROUP BY qa.question_id"
-        );
-        $qaRows->execute([$lessonId]);
-        $qaStats = $qaRows->fetchAll();
-    } catch (Exception $e) {}
+    $qaSource = 'question_attempts';
+    if (tableExists($db, 'question_answers')) {
+        try {
+            $qaRows = $db->prepare(
+                "SELECT qa.question_id, q.question_text,
+                        COUNT(*) total,
+                        SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                        SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                        COUNT(DISTINCT qa.student_id) students_count
+                 FROM question_answers qa
+                 JOIN questions q ON q.id=qa.question_id
+                 WHERE qa.lesson_id=?
+                 GROUP BY qa.question_id"
+            );
+            $qaRows->execute([$lessonId]);
+            $qaStats = $qaRows->fetchAll() ?: [];
+            if (!empty($qaStats)) {
+                $qaSource = 'question_answers';
+            }
+        } catch (Throwable $e) {}
+    }
+    if (empty($qaStats) && tableExists($db, 'question_attempts')) {
+        try {
+            $qaRows = $db->prepare(
+                "SELECT qa.question_id, q.question_text,
+                        COUNT(*) total,
+                        SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                        SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                        COUNT(DISTINCT qa.student_id) students_count
+                 FROM question_attempts qa
+                 JOIN questions q ON q.id=qa.question_id
+                 WHERE qa.lesson_id=?
+                 GROUP BY qa.question_id"
+            );
+            $qaRows->execute([$lessonId]);
+            $qaStats = $qaRows->fetchAll() ?: [];
+        } catch (Throwable $e) {}
+    }
+
+    $activityRows = $db->prepare(
+        "SELECT action, details, duration_seconds
+         FROM activity_log
+         WHERE lesson_id=? AND action IN ('game_play', 'game_win')
+         ORDER BY created_at DESC
+         LIMIT 400"
+    );
+    $activityRows->execute([$lessonId]);
+    $activityRows = $activityRows->fetchAll();
 
     // بناء الـ prompt
     $totalGames  = count($games);
-    $wins        = count(array_filter($games, fn($g) => $g['completed']));
+    $wins        = count(array_filter($games, fn($g) => (int)$g['completed'] === 1));
+    $incomplete  = max(0, $totalGames - $wins);
     $winRate     = $totalGames ? round($wins / $totalGames * 100) : 0;
     $avgAttempts = $totalGames ? round(array_sum(array_column($games, 'attempts')) / $totalGames, 1) : 0;
+    $endedEarlyCount = 0;
+    $activityTotalCompletedQuestions = 0;
+    $activityTotalIncompleteQuestions = 0;
+    $activityDurationSum = 0;
+    $activityDurationCount = 0;
+    foreach ($activityRows as $row) {
+        $details = parseActivityDetails($row['details'] ?? null);
+        if (!empty($details['ended_early'])) {
+            $endedEarlyCount++;
+        }
+        $activityTotalCompletedQuestions += (int)($details['completed_questions'] ?? 0);
+        $activityTotalIncompleteQuestions += (int)($details['incomplete_questions'] ?? 0);
+        $duration = (int)($details['duration_seconds'] ?? $row['duration_seconds'] ?? 0);
+        if ($duration > 0) {
+            $activityDurationSum += $duration;
+            $activityDurationCount++;
+        }
+    }
+    $avgDurationSec = $activityDurationCount ? round($activityDurationSum / $activityDurationCount) : 0;
 
     $promptParts = [];
     $promptParts[] = "أنت مساعد تعليمي متخصص في اللغة العربية وتحليل أداء الطلاب.";
     $promptParts[] = "\n\n## بيانات الدرس\n- اسم الدرس: {$lesson['name']}\n- المقرر: {$lesson['course_name']}\n- عدد الأسئلة: " . count($questions);
-    $promptParts[] = "\n\n## إحصائيات عامة\n- إجمالي المحاولات: $totalGames\n- نسبة الفوز: $winRate%\n- متوسط المحاولات: $avgAttempts";
+    $promptParts[] = "\n\n## تعريف التصنيف\n- المغامرة المكتملة 100%: الطالب حل جميع الأسئلة (5/5)\n- المغامرة غير المكتملة 100%: نتيجة أقل من 5/5";
+    $promptParts[] = "\n\n## إحصائيات student_games\n- إجمالي المغامرات: $totalGames\n- المغامرات المكتملة 100%: $wins\n- المغامرات غير المكتملة 100%: $incomplete\n- نسبة الإكمال 100%: $winRate%\n- متوسط المحاولات المخزنة: $avgAttempts";
+    $promptParts[] = "\n\n## إحصائيات activity_log\n- عدد سجلات اللعب (game_play/game_win): " . count($activityRows) . "\n- عدد الإنهاء المبكر: $endedEarlyCount\n- مجموع الأسئلة المكتملة عبر السجلات: $activityTotalCompletedQuestions\n- مجموع الأسئلة غير المكتملة عبر السجلات: $activityTotalIncompleteQuestions\n- متوسط مدة المحاولة (ثانية): $avgDurationSec";
 
     if (!empty($qaStats)) {
-        $promptParts[] = "\n\n## أداء كل سؤال";
+        $promptParts[] = "\n\n## أداء كل سؤال (المصدر: {$qaSource})";
         usort($qaStats, fn($a, $b) => ((int)$b['wrong_count']) <=> ((int)$a['wrong_count']));
         foreach ($qaStats as $qs) {
             $r = $qs['total'] ? round($qs['correct_count'] / $qs['total'] * 100) : 0;
@@ -91,7 +164,7 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_analyze') {
     if (!empty($games)) {
         $promptParts[] = "\n\n## أداء الطلاب (آخر 10 نتائج)";
         foreach (array_slice($games, 0, 10) as $g) {
-            $status = $g['completed'] ? 'فاز' : 'لم يكمل';
+            $status = ((int)$g['completed'] === 1) ? 'مكتملة 100%' : 'غير مكتملة 100%';
             $promptParts[] = "- {$g['sname']}: {$status}، نقاط {$g['points_earned']}، محاولات {$g['attempts']}";
         }
     }
@@ -140,21 +213,39 @@ if ($lesson) {
     $studentPerf = $studentPerf->fetchAll();
 
     try {
-        $qaRows = $db->prepare(
-            "SELECT qa.question_id, COUNT(*) total,
-                    SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
-                    SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
-                    COUNT(DISTINCT qa.student_id) students_count,
-                    q.question_text, q.correct_option
-              FROM question_attempts qa
-              JOIN questions q ON q.id=qa.question_id
-              WHERE qa.lesson_id=?
-              GROUP BY qa.question_id ORDER BY (SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END)/COUNT(*)) ASC"
-        );
-        $qaRows->execute([$lessonId]);
-        $qaStats = $qaRows->fetchAll();
+        if (tableExists($db, 'question_answers')) {
+            $qaRows = $db->prepare(
+                "SELECT qa.question_id, COUNT(*) total,
+                        SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                        SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                        COUNT(DISTINCT qa.student_id) students_count,
+                        q.question_text, q.correct_option
+                  FROM question_answers qa
+                  JOIN questions q ON q.id=qa.question_id
+                  WHERE qa.lesson_id=?
+                  GROUP BY qa.question_id ORDER BY (SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END)/COUNT(*)) ASC"
+            );
+            $qaRows->execute([$lessonId]);
+            $qaStats = $qaRows->fetchAll() ?: [];
+        }
+
+        if (empty($qaStats) && tableExists($db, 'question_attempts')) {
+            $qaRows = $db->prepare(
+                "SELECT qa.question_id, COUNT(*) total,
+                        SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END) correct_count,
+                        SUM(CASE WHEN qa.is_correct=0 THEN 1 ELSE 0 END) wrong_count,
+                        COUNT(DISTINCT qa.student_id) students_count,
+                        q.question_text, q.correct_option
+                  FROM question_attempts qa
+                  JOIN questions q ON q.id=qa.question_id
+                  WHERE qa.lesson_id=?
+                  GROUP BY qa.question_id ORDER BY (SUM(CASE WHEN qa.is_correct=1 THEN 1 ELSE 0 END)/COUNT(*)) ASC"
+            );
+            $qaRows->execute([$lessonId]);
+            $qaStats = $qaRows->fetchAll() ?: [];
+        }
         $hasQA = !empty($qaStats);
-    } catch (Exception $e) { $hasQA = false; }
+    } catch (Throwable $e) { $hasQA = false; }
 }
 
 // ===================== دالة استدعاء الذكاء =====================
@@ -305,7 +396,7 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
     <div class="stat-card">
       <div class="stat-icon" style="background:#E3F2FD;"><i class="fas fa-trophy" style="color:var(--info);"></i></div>
       <div class="stat-value"><?= $gameStats['total'] ? round(($gameStats['wins'] / $gameStats['total']) * 100) : 0 ?>%</div>
-      <div class="stat-label">نسبة الفوز</div>
+      <div class="stat-label">نسبة الإكمال 100%</div>
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background:#FCE4EC;"><i class="fas fa-redo" style="color:#C2185B;"></i></div>
@@ -364,7 +455,7 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
     <div class="card-header"><div class="card-title"><i class="fas fa-users"></i> أداء الطلاب في هذا الدرس</div></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>الطالب</th><th>المحاولات</th><th>الفوز</th><th>متوسط النقاط</th><th>آخر محاولة</th><th></th></tr></thead>
+        <thead><tr><th>الطالب</th><th>المحاولات</th><th>مكتملة 100%</th><th>متوسط النقاط</th><th>آخر محاولة</th><th></th></tr></thead>
         <tbody>
           <?php foreach ($studentPerf as $sp): ?>
           <tr>

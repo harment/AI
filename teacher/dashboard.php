@@ -69,7 +69,7 @@ $openLessons = $db->query("SELECT l.*, c.name AS course_name FROM lessons l JOIN
     <div class="stat-card">
       <div class="stat-icon" style="background:#FCE4EC;"><i class="fas fa-gamepad" style="color:#C2185B;"></i></div>
       <div class="stat-value"><?= $totalGames ?></div>
-      <div class="stat-label">مغامرة مكتملة</div>
+      <div class="stat-label">مغامرة مكتملة 100%</div>
     </div>
   </div>
 
