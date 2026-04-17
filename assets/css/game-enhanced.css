@@ -168,3 +168,298 @@
 .map-theme-mountain .map-mode-badge { background: #eff6ff; color: #1d4ed8; }
 .map-theme-lake .map-mode-badge { background: #fffbeb; color: #b45309; }
 .map-theme-forest .map-mode-badge { background: #f0fdf4; color: #15803d; }
+
+/* =============================================
+   أنماط لعبة الخريطة الرسومية
+   ============================================= */
+
+.map-game-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.map-bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.map-decoration {
+  position: absolute;
+  z-index: 1;
+  opacity: 0.7;
+  pointer-events: none;
+  animation: mapDecoFloat 4s ease-in-out infinite alternate;
+}
+.map-decoration:nth-child(even) { animation-delay: -2s; }
+
+@keyframes mapDecoFloat {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-6px); }
+}
+
+/* ── مسار SVG ── */
+.map-path-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+.map-path-line {
+  fill: none;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-dasharray: 2 1.5;
+  opacity: 0.85;
+}
+.map-path-line-glow {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.15;
+  filter: blur(2px);
+}
+
+/* ── المحطات ── */
+.map-station {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, -50%);
+  cursor: default;
+  transition: transform 0.3s ease;
+}
+.map-station-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  border: 3px solid rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+
+.map-station-current .map-station-circle {
+  background: #fbbf24;
+  color: #78350f;
+  border-color: #fff;
+  transform: scale(1.25);
+  box-shadow: 0 0 20px rgba(251,191,36,0.6);
+  animation: stationPulse 1.5s ease-in-out infinite;
+}
+@keyframes stationPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(251,191,36,0.6); }
+  50%      { box-shadow: 0 0 30px rgba(251,191,36,0.9); }
+}
+
+.map-station-done .map-station-circle {
+  background: #22c55e;
+  color: #fff;
+  border-color: #86efac;
+}
+.map-station-done.map-station-correct .map-station-circle {
+  background: #22c55e;
+  border-color: #86efac;
+}
+.map-station-done.map-station-wrong .map-station-circle {
+  background: #ef4444;
+  border-color: #fca5a5;
+}
+
+/* ── اللاعب ── */
+.map-player {
+  position: absolute;
+  z-index: 8;
+  font-size: 2rem;
+  transform: translate(-50%, -80%);
+  transition: left 0.6s ease, top 0.6s ease;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+  animation: playerBounce 1s ease-in-out infinite;
+}
+@keyframes playerBounce {
+  0%, 100% { transform: translate(-50%, -80%); }
+  50%      { transform: translate(-50%, -90%); }
+}
+
+/* ── شريط الرأس ── */
+.map-header-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+  color: #fff;
+}
+.map-badge {
+  background: rgba(255,255,255,0.2);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.map-counter {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* ── مودال السؤال ── */
+.map-question-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  animation: fadeIn 0.3s ease;
+}
+.map-question-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  max-width: 520px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  animation: slideUp 0.35s ease;
+}
+.map-q-counter {
+  font-weight: 700;
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.map-q-text {
+  margin: 0 0 1rem 0;
+  color: #0f172a;
+  line-height: 1.7;
+  font-size: 1.1rem;
+}
+
+/* ── خيارات الإجابة ── */
+.map-q-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+.map-option-btn {
+  border: 2px solid #d9e1ee;
+  background: #fff;
+  border-radius: 12px;
+  text-align: right;
+  padding: 0.8rem 0.9rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+.map-option-btn:hover:not(:disabled) {
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  background: #f8fafc;
+}
+.map-opt-label {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.map-option-btn.correct {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+.map-option-btn.correct .map-opt-label {
+  background: #22c55e;
+  color: #fff;
+}
+.map-option-btn.wrong {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+.map-option-btn.wrong .map-opt-label {
+  background: #ef4444;
+  color: #fff;
+}
+.map-option-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.92;
+}
+
+/* ── تعليقات ── */
+.map-q-feedback {
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.map-q-feedback.correct { background: #ecfdf5; color: #065f46; }
+.map-q-feedback.wrong   { background: #fef2f2; color: #991b1b; }
+.map-q-feedback.warning { background: #fff7ed; color: #9a3412; }
+
+/* ── التراكب والنتائج ── */
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  animation: fadeIn 0.3s ease;
+}
+.map-result-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  animation: bounceIn 0.5s ease;
+}
+.map-result-icon { font-size: 3.5rem; margin-bottom: 0.5rem; }
+.map-result-box h3 { margin-bottom: 0.5rem; color: #0f172a; }
+.map-result-box p { color: #334155; margin-bottom: 0.3rem; }
+.map-scholar-box {
+  margin: 0.75rem auto;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #94a3b8;
+  border-radius: 10px;
+  max-width: 320px;
+  background: #f8fafc;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .map-game-wrapper { min-height: 450px; }
+  .map-station-circle { width: 34px; height: 34px; font-size: 0.85rem; }
+  .map-player { font-size: 1.5rem; }
+  .map-question-box { padding: 1rem; }
+  .map-decoration { display: none; }
+}
