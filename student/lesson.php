@@ -540,9 +540,13 @@ async function selectGameMode(mode) {
 }
 
 function launchGameWithMode(mode) {
+  const allowedMapThemes = new Set(['island', 'mountain', 'lake', 'forest']);
+  const safeMode = typeof mode === 'string' ? mode : 'map-mountain';
+
   // التحقق إذا كان النمط خريطة بسيطة
-  if (mode.startsWith('map-')) {
-    const mapTheme = mode.replace('map-', ''); // island, mountain, lake, forest
+  if (safeMode.startsWith('map-')) {
+    const mapThemeRaw = safeMode.replace('map-', '');
+    const mapTheme = allowedMapThemes.has(mapThemeRaw) ? mapThemeRaw : 'mountain';
     adventureGame = new MapAdventureGame({
       lessonId: LESSON_ID,
       mapTheme: mapTheme,
@@ -554,7 +558,7 @@ function launchGameWithMode(mode) {
     // استخدام اللعبة التقليدية
     adventureGame = new AdventureGame({
       lessonId: LESSON_ID,
-      gameType: mode,
+      gameType: 'mountain',
       questions: QUESTIONS, // سيتم اختيار 5 أسئلة عشوائياً داخل الكلاس
       scholars: SCHOLARS,
       containerId: 'gameContainer',
