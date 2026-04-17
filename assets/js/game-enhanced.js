@@ -228,10 +228,14 @@ class AdventureGame {
         <p>الحالة: <strong>${won ? 'مكتملة 100%' : 'غير مكتملة 100%'}</strong></p>
         <p>النقاط المكتسبة: <strong>${points}</strong></p>
         ${scholar ? `<div class="scholar-box">اكتشفت: <strong>${scholar.name}</strong></div>` : ''}
-        <button class="btn btn-primary" id="enhancedReplayBtn">🔄 إعادة المحاولة</button>
+        <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="enhancedReplayBtn">🔄 إعادة المحاولة</button>
+          <button class="btn btn-outline" id="enhancedExitBtn">🚪 إنهاء اللعبة</button>
+        </div>
       </div>
     `;
     document.getElementById('enhancedReplayBtn')?.addEventListener('click', () => this.restart());
+    document.getElementById('enhancedExitBtn')?.addEventListener('click', () => this._exitToSelector());
   }
 
   _showFailureResult() {
@@ -264,7 +268,7 @@ class AdventureGame {
       </div>
     `;
     document.getElementById('enhancedReplayBtn')?.addEventListener('click', () => this.restart());
-    document.getElementById('enhancedExitBtn')?.addEventListener('click', () => window.location.reload());
+    document.getElementById('enhancedExitBtn')?.addEventListener('click', () => this._exitToSelector());
   }
 
   _playFallSound() {
@@ -311,6 +315,19 @@ class AdventureGame {
     this.completed = false;
     this.render();
     this.start();
+  }
+
+  /* ── العودة لاختيار النمط ── */
+  _exitToSelector() {
+    const gameContainer = document.getElementById('gameContainer');
+    if (gameContainer) {
+      gameContainer.style.display = 'none';
+      gameContainer.innerHTML = '';
+    }
+    const selector = document.getElementById('gameModeSelector');
+    if (selector) {
+      selector.style.display = '';
+    }
   }
 
   _recordAttempt(questionId, isCorrect, attemptsCount) {

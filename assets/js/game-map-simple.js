@@ -42,6 +42,8 @@ class MapAdventureGame extends AdventureGame {
     this.playerPos = -1;
     this._questionVisible = false;
     this._waitingForClick = false;
+    // إعادة الرسم بعد ضبط النمط – لأن super() يستدعي render() قبل ضبط mapTheme
+    this.render();
   }
 
   /* ── مواقع المحطات حسب النمط (نسبة مئوية من الحاوية) ── */
@@ -568,7 +570,7 @@ class MapAdventureGame extends AdventureGame {
     const overlay = document.getElementById('mapOverlay');
     if (!overlay) return;
     overlay.innerHTML = `
-      <div class="map-result-box">
+      <div class="map-result-box map-result-compact">
         <div class="map-result-icon">${won ? '🏆' : '✨'}</div>
         <h3>${won ? 'مبروك! اجتزت المغامرة' : 'مغامرة غير مكتملة'}</h3>
         <div class="map-result-stats">
@@ -586,13 +588,15 @@ class MapAdventureGame extends AdventureGame {
           <div class="scholar-name">اكتشفت: ${scholar.name}</div>
           ${scholar.short_bio ? `<div class="scholar-bio">${scholar.short_bio}</div>` : ''}
         </div>` : ''}
-        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;">
+        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem;">
           <button class="btn btn-primary" id="mapReplayBtn">🔄 إعادة المحاولة</button>
+          <button class="btn btn-outline" id="mapExitBtn">🚪 إنهاء اللعبة</button>
         </div>
       </div>
     `;
     overlay.style.display = 'flex';
     document.getElementById('mapReplayBtn')?.addEventListener('click', () => this.restart());
+    document.getElementById('mapExitBtn')?.addEventListener('click', () => this._exitToSelector());
   }
 
   /* ── نتيجة الفشل ── */
@@ -614,7 +618,7 @@ class MapAdventureGame extends AdventureGame {
     const overlay = document.getElementById('mapOverlay');
     if (!overlay) return;
     overlay.innerHTML = `
-      <div class="map-result-box">
+      <div class="map-result-box map-result-compact">
         <div class="map-result-icon">😵‍💫💥</div>
         <h3>سقطت في المغامرة!</h3>
         <p>لقد أخطأت مرتين، لذلك انتهت المغامرة مباشرة.</p>
@@ -628,15 +632,15 @@ class MapAdventureGame extends AdventureGame {
             <div class="stat-label">نقاط مكتسبة</div>
           </div>
         </div>
-        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;">
+        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem;">
           <button class="btn btn-primary" id="mapReplayBtn">🔄 إعادة المحاولة</button>
-          <button class="btn btn-outline" id="mapExitBtn">🚪 خروج من اللعبة</button>
+          <button class="btn btn-outline" id="mapExitBtn">🚪 إنهاء اللعبة</button>
         </div>
       </div>
     `;
     overlay.style.display = 'flex';
     document.getElementById('mapReplayBtn')?.addEventListener('click', () => this.restart());
-    document.getElementById('mapExitBtn')?.addEventListener('click', () => window.location.reload());
+    document.getElementById('mapExitBtn')?.addEventListener('click', () => this._exitToSelector());
   }
 
   /* ── إعادة اللعبة ── */
@@ -658,6 +662,21 @@ class MapAdventureGame extends AdventureGame {
     this._waitingForClick = false;
     this.render();
     this.start();
+  }
+
+  /* ── العودة لاختيار النمط ── */
+  _exitToSelector() {
+    // إخفاء حاوية اللعبة
+    const gameContainer = document.getElementById('gameContainer');
+    if (gameContainer) {
+      gameContainer.style.display = 'none';
+      gameContainer.innerHTML = '';
+    }
+    // إظهار واجهة اختيار النمط
+    const selector = document.getElementById('gameModeSelector');
+    if (selector) {
+      selector.style.display = '';
+    }
   }
 
   /* ── التوافق: لا نستخدم عناصر enhanced ── */
