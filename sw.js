@@ -1,12 +1,13 @@
 // =============================================
 // Service Worker – المساعد الذّكاليّ
 // =============================================
-const CACHE_NAME = 'dhakali-v3';
+const CACHE_NAME = 'dhakali-v4';
 const STATIC_ASSETS = [
   '/',
   '/assets/css/style.css',
   '/assets/js/app.js',
-  '/assets/js/game.js',
+  '/assets/js/game-enhanced.js',
+  '/assets/js/game-map-simple.js',
   '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap',
@@ -56,13 +57,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static assets with error handling
+  // Stale-while-revalidate for static assets (serve cached, update in background)
   event.respondWith(
-    caches.match(event.request)
-      .then(cached => cached || fetch(event.request))
-      .catch(err => {
-        console.warn('[SW] Static asset fetch failed:', event.request.url, err);
-        return new Response('', { status: 503 });
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(event.request).then(cached => {
+        const networkFetch = fetch(event.request).then(response => {
+          if (response.ok) cache.put(event.request, response.clone());
+          return response;
+        }).catch(err => {
+          console.warn('[SW] Static asset fetch failed:', event.request.url, err);
+          return cached || new Response('', { status: 503 });
+        });
+        return cached || networkFetch;
       })
+    )
   );
 });

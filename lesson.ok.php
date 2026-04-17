@@ -421,8 +421,8 @@ if (!empty($lesson['video_url'])) {
 </div>
 
 <script src="/assets/js/app.js"></script>
-<script src="/assets/js/game-enhanced.js"></script>
-<script src="/assets/js/game-map-simple.js"></script>
+<script src="/assets/js/game-enhanced.js?v=4"></script>
+<script src="/assets/js/game-map-simple.js?v=4"></script>
 <style>
 .game-mode-card {
   background: white;
