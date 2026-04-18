@@ -105,6 +105,8 @@ $questions = $questions->fetchAll();
     <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
       <a href="/teacher/ai_generate.php?lesson_id=<?= $lessonId ?>&generate=questions" class="btn btn-accent btn-sm"><i class="fas fa-robot"></i> توليد بالذكاء</a>
       <?php if (!empty($questions)): ?>
+      <a href="/teacher/question_analysis.php?lesson_id=<?= $lessonId ?>" class="btn btn-primary btn-sm"><i class="fas fa-brain"></i> تحليل الأسئلة</a>
+      <a href="/teacher/edit_questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> تعديل</a>
       <a href="?lesson_id=<?= $lessonId ?>&export=excel" class="btn btn-primary btn-sm"><i class="fas fa-file-excel"></i> تصدير Excel</a>
       <?php endif; ?>
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('addModal').style.display='flex'"><i class="fas fa-plus"></i> سؤال جديد</button>

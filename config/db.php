@@ -1,77 +1,106 @@
 <?php
 // =============================================
-// تحميل ملف .env إن وُجد
+// إعدادات قاعدة البيانات والبيئة
 // =============================================
-(function () {
-    $envFile = __DIR__ . '/../.env';
-    if (!file_exists($envFile)) return;
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if ($line === '' || str_starts_with($line, '#')) continue;
-        $pos = strpos($line, '=');
-        if ($pos === false) continue;
-        $key   = trim(substr($line, 0, $pos));
-        $value = trim(substr($line, $pos + 1));
-        // إزالة علامات الاقتباس الاختيارية
-        if (strlen($value) >= 2 && (
-            ($value[0] === '"'  && substr($value, -1) === '"') ||
-            ($value[0] === "'"  && substr($value, -1) === "'")
-        )) {
-            $value = substr($value, 1, -1);
+
+if (!function_exists('dhakali_env')) {
+    function dhakali_env(string $key, ?string $default = null): ?string
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        if ($value === false || $value === null || $value === '') {
+            return $default;
         }
-        if (getenv($key) === false) {   // لا تلغي متغيرات النظام
-            putenv("$key=$value");
-            $_ENV[$key] = $value;
+        return (string)$value;
+    }
+}
+
+if (!function_exists('dhakali_load_env')) {
+    function dhakali_load_env(string $envPath): void
+    {
+        if (!is_file($envPath) || !is_readable($envPath)) {
+            return;
+        }
+
+        $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            return;
+        }
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+                continue;
+            }
+
+            [$name, $value] = array_map('trim', explode('=', $line, 2));
+            if ($name === '') {
+                continue;
+            }
+
+            $len = strlen($value);
+            if ($len >= 2 && (($value[0] === '"' && $value[$len - 1] === '"') || ($value[0] === "'" && $value[$len - 1] === "'"))) {
+                $value = substr($value, 1, -1);
+            }
+
+            if (!array_key_exists($name, $_ENV)) {
+                $_ENV[$name] = $value;
+            }
+            if (!array_key_exists($name, $_SERVER)) {
+                $_SERVER[$name] = $value;
+            }
+            if (getenv($name) === false) {
+                putenv($name . '=' . $value);
+            }
         }
     }
-})();
+}
 
-// =============================================
-// إعدادات قاعدة البيانات
-// =============================================
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
-define('DB_NAME', getenv('DB_NAME') ?: 'dhakali_db');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_CHARSET', 'utf8mb4');
+dhakali_load_env(__DIR__ . '/../.env');
 
-// إعدادات التطبيق
-define('APP_NAME', 'المساعد الذّكاليّ');
-define('APP_URL',  (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'));
-define('APP_VERSION', '1.0.0');
+if (!defined('DB_HOST')) define('DB_HOST', dhakali_env('DB_HOST', 'localhost'));
+if (!defined('DB_PORT')) define('DB_PORT', (int)dhakali_env('DB_PORT', '3306'));
+if (!defined('DB_NAME')) define('DB_NAME', dhakali_env('DB_NAME', 'dhakali_db'));
+if (!defined('DB_USER')) define('DB_USER', dhakali_env('DB_USER', 'root'));
+if (!defined('DB_PASS')) define('DB_PASS', dhakali_env('DB_PASS', ''));
 
-// مفاتيح الذكاء الاصطناعي (يُعدَّل حسب البيئة)
-define('GEMINI_API_KEY',      getenv('GEMINI_API_KEY')      ?: '');
-define('OPENAI_API_KEY',      getenv('OPENAI_API_KEY')      ?: '');
-define('ANTHROPIC_API_KEY',   getenv('ANTHROPIC_API_KEY')   ?: '');
-define('GAMMA_API_KEY',       getenv('GAMMA_API_KEY')       ?: '');
-define('ELEVENLABS_API_KEY',  getenv('ELEVENLABS_API_KEY')  ?: '');
-define('HEYGEN_API_KEY',      getenv('HEYGEN_API_KEY')      ?: '');
+if (!defined('APP_URL')) define('APP_URL', rtrim((string)dhakali_env('APP_URL', ''), '/'));
+if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', (int)dhakali_env('SESSION_LIFETIME', '2592000'));
 
-// إعدادات الجلسة
-define('SESSION_LIFETIME', 7200); // ساعتان
+$projectRoot = dirname(__DIR__);
+if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', $projectRoot . '/uploads/');
+if (!defined('UPLOAD_URL')) define('UPLOAD_URL', '/uploads/');
 
-// مسار رفع الملفات
-define('UPLOAD_DIR', __DIR__ . '/../uploads/');
-define('UPLOAD_URL', APP_URL . '/uploads/');
+if (!defined('GEMINI_API_KEY'))     define('GEMINI_API_KEY',     (string)dhakali_env('GEMINI_API_KEY', ''));
+if (!defined('OPENAI_API_KEY'))     define('OPENAI_API_KEY',     (string)dhakali_env('OPENAI_API_KEY', ''));
+if (!defined('ANTHROPIC_API_KEY'))  define('ANTHROPIC_API_KEY',  (string)dhakali_env('ANTHROPIC_API_KEY', ''));
+if (!defined('GAMMA_API_KEY'))      define('GAMMA_API_KEY',      (string)dhakali_env('GAMMA_API_KEY', ''));
+if (!defined('ELEVENLABS_API_KEY')) define('ELEVENLABS_API_KEY', (string)dhakali_env('ELEVENLABS_API_KEY', ''));
+if (!defined('HEYGEN_API_KEY'))     define('HEYGEN_API_KEY',     (string)dhakali_env('HEYGEN_API_KEY', ''));
 
-// إنشاء اتصال PDO
-function getDB(): PDO {
-    static $pdo = null;
-    if ($pdo === null) {
-        $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-        $options = [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
-        ];
+if (!function_exists('getDB')) {
+    function getDB(): PDO
+    {
+        static $pdo = null;
+        if ($pdo instanceof PDO) {
+            return $pdo;
+        }
+
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+            DB_HOST,
+            DB_PORT,
+            DB_NAME
+        );
+
         try {
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ]);
+            return $pdo;
         } catch (PDOException $e) {
-            throw new RuntimeException('خطأ في الاتصال بقاعدة البيانات', 500, $e);
+            throw new RuntimeException('فشل الاتصال بقاعدة البيانات: ' . $e->getMessage(), 0, $e);
         }
     }
-    return $pdo;
 }
