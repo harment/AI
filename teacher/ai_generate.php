@@ -855,20 +855,46 @@ PROMPT;
     
     $script = $scriptResult['text'];
     
-    // 2. استدعاء HeyGen v3 Video Agent API
-    $url = "https://api.heygen.com/v3/video-agents";
-    
-    // تقصير السكريبت إذا كان طويلاً جداً
-    $shortScript = mb_substr($script, 0, 800); // حد أقصى 800 حرف
-    
-    // برومبت مُبسّط للغاية
-    $prompt = "A 3-minute Arabic educational video about {$lessonName}. Script: {$shortScript}";
-    
-    // استخدام Video Agent
+    // 2. استدعاء HeyGen Studio API v2
+    $url = "https://api.heygen.com/v2/video/generate";
+
+    // تقصير السكريبت إذا كان طويلاً جداً (حد أقصى 1500 حرف للحقل input_text)
+    $shortScript = mb_substr($script, 0, 1500);
+
+    // معرّفات Avatar و Voice — يمكن تعيينها عبر ثوابت HEYGEN_AVATAR_ID / HEYGEN_VOICE_ID في config/db.php
+    $avatarId = defined('HEYGEN_AVATAR_ID') && !empty(HEYGEN_AVATAR_ID)
+        ? HEYGEN_AVATAR_ID
+        : 'Susan_teacher_sitting2_front_close';
+    $voiceId = defined('HEYGEN_VOICE_ID') && !empty(HEYGEN_VOICE_ID)
+        ? HEYGEN_VOICE_ID
+        : '2d5b0e6cf36f460aa7fc47e3eee4ba54'; // صوت عربي افتراضي
+
     $payload = [
-        'prompt' => $prompt
+        'title'       => $lessonName,
+        'caption'     => false,
+        'dimension'   => ['width' => 1280, 'height' => 720],
+        'video_inputs' => [
+            [
+                'character' => [
+                    'type'               => 'avatar',
+                    'avatar_id'          => $avatarId,
+                    'avatar_style'       => 'normal',
+                    'use_avatar_iv_model' => true,
+                ],
+                'voice' => [
+                    'type'       => 'text',
+                    'voice_id'   => $voiceId,
+                    'input_text' => $shortScript,
+                    'speed'      => 1.0,
+                ],
+                'background' => [
+                    'type'  => 'color',
+                    'value' => '#1a1a2e',
+                ],
+            ],
+        ],
     ];
-    
+
     $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
     
     $ch = curl_init($url);
@@ -906,7 +932,7 @@ PROMPT;
     }
     
     $data = json_decode($response, true);
-    // Video Agent يعيد video_id في data
+    // Studio API v2 يعيد video_id في data.video_id
     $videoId = $data['data']['video_id'] ?? $data['video_id'] ?? '';
     
     if (empty($videoId)) {
