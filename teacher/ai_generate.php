@@ -906,7 +906,8 @@ PROMPT;
             'X-Api-Key: ' . $heygenKey,
             'Content-Type: application/json'
         ],
-        CURLOPT_TIMEOUT => 30
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_TIMEOUT        => 60
     ]);
     
     $response = curl_exec($ch);
