@@ -240,8 +240,15 @@ if ($lesson && isset($_POST['action']) && $_POST['action'] === 'ai_quality_analy
         $qList .= "   الإجابة الصحيحة: {$correct}\n\n";
     }
 
-    $totalQ = count($allQuestions);
-    $prompt  = "أنت خبير تربوي في تقييم أسئلة الاختبارات. فيما يلي {$totalQ} سؤال اختيار من متعدد لدرس «{$lesson['name']}» من مقرر «{$lesson['course_name']}»:\n\n{$qList}\nقدّم تحليلاً شاملاً يشمل:\n1. تقييم جودة الأسئلة وصياغتها مع التقييم الإجمالي من 10\n2. توزيع مستويات الصعوبة (سهل / متوسط / صعب) مع عدد الأسئلة في كل مستوى\n3. مدى تغطية الأسئلة للمحتوى التعليمي ومدى ارتباطها بنواتج التعلم المتوقعة\n4. نقاط القوة في الأسئلة\n5. نقاط الضعف والأسئلة التي تحتاج تحسيناً مع ذكر رقمها\n6. توصيات محددة لتحسين جودة الأسئلة وارتباطها بالأهداف التعليمية\n\nاكتب الإجابة بالعربية واستخدم HTML بسيط (h4, p, ul, li, strong, em) للتنسيق. لا تستخدم JSON.";
+    $totalQ          = count($allQuestions);
+    $learningOutcomes = trim($_POST['learning_outcomes'] ?? '');
+
+    $loSection = '';
+    if ($learningOutcomes !== '') {
+        $loSection = "\n\n## نواتج التعلم المحددة للدرس\n" . $learningOutcomes . "\n\nحلّل الأسئلة في ضوء نواتج التعلم المذكورة أعلاه بدقة.";
+    }
+
+    $prompt  = "أنت خبير تربوي في تقييم أسئلة الاختبارات. فيما يلي {$totalQ} سؤال اختيار من متعدد لدرس «{$lesson['name']}» من مقرر «{$lesson['course_name']}»:{$loSection}\n\n## الأسئلة\n{$qList}\nقدّم تحليلاً شاملاً يشمل:\n1. تقييم جودة الأسئلة وصياغتها مع التقييم الإجمالي من 10\n2. توزيع مستويات الصعوبة (سهل / متوسط / صعب) مع عدد الأسئلة في كل مستوى\n3. مدى تغطية الأسئلة للمحتوى التعليمي" . ($learningOutcomes !== '' ? " ومدى ارتباطها بنواتج التعلم المذكورة مع تحديد كل سؤال بالناتج الذي يقيسه" : " ومدى ارتباطها بنواتج التعلم المتوقعة") . "\n4. نقاط القوة في الأسئلة\n5. نقاط الضعف والأسئلة التي تحتاج تحسيناً مع ذكر رقمها\n6. توصيات محددة لتحسين جودة الأسئلة وارتباطها بالأهداف التعليمية\n\nاكتب الإجابة بالعربية واستخدم HTML بسيط (h4, p, ul, li, strong, em) للتنسيق. لا تستخدم JSON.";
 
     $result = callAIProvider($prompt, $apiKey, $provider);
     echo json_encode($result, JSON_UNESCAPED_UNICODE);
@@ -574,6 +581,16 @@ function callAIProvider(string $prompt, string $apiKey, string $provider): array
     </div>
     <p style="color:var(--muted);font-size:.9rem;margin-bottom:1rem;">يقيّم الذكاء الاصطناعي جودة الأسئلة المخزنة وصياغتها ومدى تغطيتها للمحتوى التعليمي.</p>
 
+    <div style="margin-bottom:1rem;">
+      <label for="learningOutcomes" class="form-label" style="font-weight:600;">
+        <i class="fas fa-bullseye" style="color:var(--primary);"></i> نواتج التعلم
+        <span style="font-weight:400;color:var(--muted);font-size:.85rem;"> (اختياري — كلما أدخلتها كان التحليل أدق)</span>
+      </label>
+      <textarea id="learningOutcomes" class="form-control" rows="4"
+                placeholder="مثال:&#10;1. يُعرّف الطالب مفهوم الجملة الاسمية&#10;2. يُميّز الطالب بين المبتدأ والخبر&#10;3. يُطبّق الطالب أحكام النكرة والمعرفة"
+                style="resize:vertical;font-size:.9rem;line-height:1.6;"></textarea>
+    </div>
+
     <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;">
       <select id="qualityProvider" class="form-control" style="width:auto;">
         <option value="gemini" <?= !empty($geminiKey) ? 'selected' : '' ?>>Google Gemini <?= !empty($geminiKey) ? '✓' : '' ?></option>
@@ -670,6 +687,7 @@ async function runQualityAnalysis() {
     fd.append('action',   'ai_quality_analyze');
     fd.append('provider', provider);
     fd.append('api_key',  apiKey);
+    fd.append('learning_outcomes', document.getElementById('learningOutcomes').value.trim());
 
     const resp = await fetch('?lesson_id=<?= $lessonId ?>', { method: 'POST', body: fd });
     const data = await resp.json();
