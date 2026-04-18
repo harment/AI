@@ -14,7 +14,42 @@ if (isset($_GET['export']) && $_GET['export'] === 'excel') {
     echo "الاسم,الرقم الجامعي,المستوى,السنة,النقاط,عدد العلماء,المغامرات,تاريخ التسجيل\n";
     $rows = $db->query("SELECT s.name, s.university_id, s.level, s.study_year, s.points, COUNT(DISTINCT ss.scholar_id) scholars, COUNT(DISTINCT sg.id) games, s.created_at FROM students s LEFT JOIN student_scholars ss ON ss.student_id=s.id LEFT JOIN student_games sg ON sg.student_id=s.id GROUP BY s.id ORDER BY s.points DESC")->fetchAll();
     foreach ($rows as $r) {
-        echo implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $r)) . "\n";
+        echo implode(',', array_map(function($v) {
+            $v = (string)$v;
+            if (isset($v[0]) && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"])) {
+                $v = "'" . $v;
+            }
+            return '"' . str_replace('"', '""', $v) . '"';
+        }, $r)) . "\n";
+    }
+    exit;
+}
+
+// Export question analysis Excel
+if (isset($_GET['export']) && $_GET['export'] === 'questions') {
+    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+    header('Content-Disposition: attachment; filename="questions_analysis_' . date('Ymd') . '.csv"');
+    header('Pragma: no-cache');
+    $bom = "\xEF\xBB\xBF";
+    echo $bom;
+    echo "الدرس,عدد الأسئلة,عدد اللعبات,متوسط النقاط,نسبة الفوز\n";
+    $qAnalysis = $db->query("SELECT l.name, COUNT(DISTINCT q.id) AS q_count, COUNT(DISTINCT sg.id) AS plays, AVG(sg.points_earned) AS avg_pts, SUM(sg.completed) AS wins FROM lessons l LEFT JOIN questions q ON q.lesson_id=l.id LEFT JOIN student_games sg ON sg.lesson_id=l.id GROUP BY l.id ORDER BY l.id")->fetchAll();
+    foreach ($qAnalysis as $r) {
+        $winRate = $r['plays'] > 0 ? number_format(($r['wins'] / $r['plays']) * 100, 1) . '%' : '0%';
+        $row = [
+            $r['name'],
+            $r['q_count'],
+            $r['plays'] ?: 0,
+            $r['plays'] ? number_format($r['avg_pts'], 1) : '0',
+            $winRate
+        ];
+        echo implode(',', array_map(function($v) {
+            $v = (string)$v;
+            if (isset($v[0]) && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"])) {
+                $v = "'" . $v;
+            }
+            return '"' . str_replace('"', '""', $v) . '"';
+        }, $row)) . "\n";
     }
     exit;
 }
@@ -67,7 +102,10 @@ $timeStats = $db->query("SELECT s.name, SUM(al.duration_seconds) total_sec FROM 
 <main class="main-content">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
     <h2><i class="fas fa-chart-bar"></i> تحليل التقدم والأداء</h2>
-    <a href="?export=excel" class="btn btn-primary btn-sm"><i class="fas fa-file-excel"></i> تصدير Excel</a>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+      <a href="?export=excel" class="btn btn-primary btn-sm"><i class="fas fa-file-excel"></i> تصدير تقرير الطلاب</a>
+      <a href="?export=questions" class="btn btn-accent btn-sm"><i class="fas fa-file-excel"></i> تصدير تحليل الأسئلة</a>
+    </div>
   </div>
 
   <?php if ($student): ?>

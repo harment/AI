@@ -161,6 +161,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ========== QUESTIONS ==========
     if ($genType === 'questions') {
+        $numQuestions = (int)($_POST['num_questions'] ?? 30);
+        $allowedCounts = [5, 10, 15, 20, 25, 30];
+        if (!in_array($numQuestions, $allowedCounts)) $numQuestions = 30;
+
+        $difficulty = $_POST['difficulty'] ?? 'medium';
+        $allowedDifficulties = ['easy', 'medium', 'hard'];
+        if (!in_array($difficulty, $allowedDifficulties)) $difficulty = 'medium';
+        $difficultyLabels = ['easy' => 'سهل', 'medium' => 'متوسط', 'hard' => 'صعب'];
+        $difficultyAr = $difficultyLabels[$difficulty];
+
+        $learningOutcomes = trim($_POST['learning_outcomes'] ?? '');
+
         $pdfContent = '';
         if (!empty($lesson['pdf_url'])) {
             $pdfPath = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
@@ -172,7 +184,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msgType = 'warning';
         } else {
             $truncatedContent = mb_substr($pdfContent, 0, 12000);
-            $prompt = "أنت أستاذ لغة عربية متخصص في النحو. فيما يلي المحتوى الكامل لملف PDF للدرس «{$lesson['name']}»:\n\n{$truncatedContent}\n\nبناءً على هذا المحتوى فقط، اصنع 30 سؤال اختيار من متعدد باللغة العربية الفصحى. كل سؤال له 4 خيارات وإجابة صحيحة وتغذية راجعة.\n\nأجب بـ JSON array فقط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
+
+            $difficultyInstructions = '';
+            if ($difficulty === 'easy') {
+                $difficultyInstructions = "اجعل الأسئلة سهلة وبسيطة تناسب المبتدئين، بحيث تقيس الفهم الأساسي والتعريفات والمفاهيم الأولية.";
+            } elseif ($difficulty === 'hard') {
+                $difficultyInstructions = "اجعل الأسئلة صعبة ومتقدمة تتطلب تحليلاً عميقاً وتطبيقاً متقدماً للمفاهيم، مع خيارات متقاربة تحتاج تفكيراً دقيقاً.";
+            } else {
+                $difficultyInstructions = "اجعل الأسئلة بمستوى متوسط تمزج بين الفهم والتطبيق.";
+            }
+
+            $outcomesSection = '';
+            if (!empty($learningOutcomes)) {
+                $outcomesSection = "\n\nنواتج التعلم المطلوب مراعاتها عند توليد الأسئلة:\n{$learningOutcomes}\n\nاحرص على أن تغطي الأسئلة نواتج التعلم المذكورة أعلاه قدر الإمكان.";
+            }
+
+            $prompt = "أنت أستاذ لغة عربية متخصص في النحو. فيما يلي المحتوى الكامل لملف PDF للدرس «{$lesson['name']}»:\n\n{$truncatedContent}\n\nبناءً على هذا المحتوى فقط، اصنع {$numQuestions} سؤال اختيار من متعدد باللغة العربية الفصحى. كل سؤال له 4 خيارات وإجابة صحيحة وتغذية راجعة.\n\nمستوى الصعوبة المطلوب: {$difficultyAr}.\n{$difficultyInstructions}{$outcomesSection}\n\nأجب بـ JSON array فقط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
             
             $result = callAI($prompt, $apiKey, $provider);
             
@@ -1323,11 +1350,39 @@ $configuredProviders = array_keys(array_filter($envKeys));
       <div class="card-header">
         <div class="card-title"><i class="fas fa-question-circle"></i> توليد الأسئلة</div>
       </div>
-      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد 30 سؤال من PDF الدرس. يمكنك تعديلها لاحقاً.</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد أسئلة من PDF الدرس حسب الإعدادات أدناه. يمكنك تعديلها لاحقاً.</p>
       <form method="POST" onsubmit="return validateQuestionsForm()">
         <input type="hidden" name="gen_type" value="questions">
         <input type="hidden" name="provider" id="qProvider">
         <input type="hidden" name="api_key_override" id="qApiKey">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="fas fa-list-ol"></i> عدد الأسئلة</label>
+            <select name="num_questions" class="form-control">
+              <option value="5">5 أسئلة</option>
+              <option value="10">10 أسئلة</option>
+              <option value="15">15 سؤال</option>
+              <option value="20">20 سؤال</option>
+              <option value="25">25 سؤال</option>
+              <option value="30" selected>30 سؤال</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="fas fa-signal"></i> مستوى الصعوبة</label>
+            <select name="difficulty" class="form-control">
+              <option value="easy">سهل</option>
+              <option value="medium" selected>متوسط</option>
+              <option value="hard">صعب</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label"><i class="fas fa-bullseye"></i> نواتج التعلم (اختياري)</label>
+          <textarea name="learning_outcomes" class="form-control" rows="3" placeholder="أدخل نواتج التعلم المطلوبة لتوجيه الأسئلة، مثال:&#10;- أن يميز الطالب بين المبتدأ والخبر&#10;- أن يعرب الطالب الجملة الاسمية إعراباً كاملاً&#10;اتركه فارغاً لتوليد أسئلة عامة من محتوى الدرس"></textarea>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> توليد الأسئلة
         </button>
