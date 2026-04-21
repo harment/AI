@@ -1174,44 +1174,43 @@ PROMPT;
     }
 
     // 2. بناء برومبت احترافي لتوليد الصورة
-    $imagePrompt = "Professional educational infographic for Arabic grammar lesson '{$lessonName}'.
+    $imagePrompt = "Create a professional Arabic educational infographic poster (vertical layout) for the grammar lesson titled: «{$lessonName}».
 
-DESIGN: Modern organizational structure on a dark navy blue background (#0A1628) with glowing cyan/teal neon borders and light effects.
+CRITICAL TEXT REQUIREMENTS:
+- ALL Arabic text must be rendered with perfect accuracy, fully readable, and properly right-to-left.
+- Every word must be legible — NO blurry, stylized, or distorted Arabic lettering.
+- Use a clean sans-serif Arabic font style with high contrast (white or bright-colored text on dark backgrounds).
+- Text must be the primary element; decorative effects must never obscure it.
 
-LAYOUT (vertical portrait infographic):
-- TOP SECTION: Large golden Arabic calligraphy title area, prominent lesson name, definition card with glowing border
-- MIDDLE SECTION: Grid of semi-transparent cards with glowing borders containing:
-  * Types and categories (أنواع وأقسام) - blue accent cards
-  * Cases and conditions (حالات وشروط) - purple accent cards  
-  * Core grammar rules (قواعد أساسية) - teal accent cards
-  * Examples (أمثلة) - orange accent cards
-- BOTTOM SECTION: Key takeaways with minimalist tech icons
+LAYOUT (top to bottom, portrait):
+1. Header area: Large bold Arabic title «{$lessonName}» centered, with a subtitle explaining the topic.
+2. Definition section: A clearly labeled card (التعريف) with 1-2 sentences in readable Arabic.
+3. Main grid: 2–4 labeled section cards, each with a short heading and 3-5 bullet points in clear Arabic text. Use distinct background colors per section (e.g., dark teal, dark purple, dark green, dark orange).
+4. Examples section: Numbered examples in Arabic, visually separated (e.g., alternating row colors).
+5. Footer note: A highlight box with a key takeaway in Arabic.
 
-VISUAL STYLE:
-- Dark navy blue background with subtle grid pattern
-- Glowing neon borders (cyan/teal) on each card
-- Golden/amber title text
-- White body text on dark cards
-- Simple geometric tech icons (circles, triangles, arrows) next to each rule
-- Subtle light ray effects making info prominent
-- Professional clean modern educational layout
+DESIGN STYLE:
+- Dark navy blue main background (#0A1628).
+- Each card has a solid dark-colored fill (not transparent) with a thin colored border — so text is always readable.
+- Simple small icons next to section headings (book, star, arrow, checkmark).
+- No heavy light-ray or lens-flare effects over text areas.
+- Clean, modern educational poster look similar to school textbook graphics.
 
-CONTENT:
+CONTENT TO DISPLAY:
 {$contentDesc}";
 
     if (!empty($extraInstructions)) {
-        $imagePrompt .= "\n\nAdditional requirements: {$extraInstructions}";
+        $imagePrompt .= "\n\nAdditional instructions: {$extraInstructions}";
     }
 
-    // 3. استدعاء OpenAI Images API (DALL-E 3)
+    // 3. استدعاء OpenAI Images API (gpt-image-1 — أفضل من DALL-E 3 في رسم النصوص العربية)
     $url = "https://api.openai.com/v1/images/generations";
     $payload = json_encode([
-        'model'   => 'dall-e-3',
+        'model'   => 'gpt-image-1',
         'prompt'  => mb_substr($imagePrompt, 0, 4000),
         'n'       => 1,
-        'size'    => '1024x1792',
-        'quality' => 'hd',
-        'style'   => 'vivid'
+        'size'    => '1024x1536',
+        'quality' => 'high',
     ], JSON_UNESCAPED_UNICODE);
 
     $ch = curl_init($url);
@@ -1236,35 +1235,42 @@ CONTENT:
         return ['success' => false, 'error' => "فشل توليد الصورة من OpenAI (HTTP {$httpCode}): " . mb_substr($errorMsg, 0, 300)];
     }
 
-    $data     = json_decode($response, true);
-    $imageUrl = $data['data'][0]['url'] ?? '';
+    $data         = json_decode($response, true);
+    $imageB64     = $data['data'][0]['b64_json'] ?? '';
+    $imageUrl     = $data['data'][0]['url']      ?? '';  // fallback for older models
 
-    if (empty($imageUrl)) {
-        return ['success' => false, 'error' => 'لم يتم إرجاع رابط الصورة من OpenAI'];
-    }
-
-    // 4. تحميل الصورة وحفظها محلياً في /uploads/infografic/
+    // 4. حفظ الصورة محلياً في /uploads/infografic/
     $uploadPath = UPLOAD_DIR . 'infografic/';
     if (!is_dir($uploadPath)) {
         mkdir($uploadPath, 0755, true);
     }
 
-    $ch = curl_init($imageUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_FOLLOWLOCATION  => true,
-        CURLOPT_TIMEOUT         => 60
-    ]);
-    $imageContent = curl_exec($ch);
-    $dlCode       = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($dlCode !== 200 || empty($imageContent)) {
-        return ['success' => false, 'error' => 'فشل تحميل الصورة المولدة من الخادم'];
-    }
-
     $fileName  = 'infografic_lesson_' . $lessonId . '_' . time() . '.png';
     $filePath  = $uploadPath . $fileName;
+
+    if (!empty($imageB64)) {
+        // gpt-image-1 يعيد الصورة base64 مباشرةً
+        $imageContent = base64_decode($imageB64);
+        if ($imageContent === false || empty($imageContent)) {
+            return ['success' => false, 'error' => 'فشل فكّ تشفير الصورة (base64)'];
+        }
+    } elseif (!empty($imageUrl)) {
+        // DALL-E 3 fallback: تحميل من رابط مؤقت
+        $ch = curl_init($imageUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_FOLLOWLOCATION  => true,
+            CURLOPT_TIMEOUT         => 60,
+        ]);
+        $imageContent = curl_exec($ch);
+        $dlCode       = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($dlCode !== 200 || empty($imageContent)) {
+            return ['success' => false, 'error' => 'فشل تحميل الصورة المولدة من الخادم'];
+        }
+    } else {
+        return ['success' => false, 'error' => 'لم يتم إرجاع صورة من OpenAI'];
+    }
 
     if (!file_put_contents($filePath, $imageContent)) {
         return ['success' => false, 'error' => 'فشل حفظ الصورة على الخادم'];
