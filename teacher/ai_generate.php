@@ -461,6 +461,34 @@ PROMPT;
         }
     }
 
+    // ========== INFOGRAPHIC ==========
+    if ($genType === 'infographic') {
+        $infographicContent = '';
+
+        if (isset($_FILES['infographic_pdf']) && $_FILES['infographic_pdf']['error'] === UPLOAD_ERR_OK) {
+            $infographicContent = extractPdfText($_FILES['infographic_pdf']['tmp_name']);
+        } elseif (!empty($lesson['pdf_url'])) {
+            $pdfPath = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
+            $infographicContent = extractPdfText($pdfPath);
+        }
+
+        if (empty($infographicContent)) {
+            $msg = 'لم يتم العثور على محتوى PDF. يرجى رفع ملف PDF الخاص بالدرس أو التأكد من رفع PDF الدرس مسبقاً.';
+            $msgType = 'warning';
+        } else {
+            $extraInstructions = trim($_POST['infographic_extra'] ?? '');
+            $openaiKey = defined('OPENAI_API_KEY') && !empty(OPENAI_API_KEY) ? OPENAI_API_KEY : $apiKey;
+            $result = generateInfographic($lesson['name'], $infographicContent, $openaiKey, $extraInstructions, $lessonId, $db);
+            if ($result['success']) {
+                $msg = 'تم توليد المخطط البصري بنجاح! ';
+                $msg .= '<a href="' . htmlspecialchars($result['infographic_url']) . '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-image"></i> معاينة الصورة</a>';
+            } else {
+                $msg = 'فشل توليد المخطط البصري: ' . $result['error'];
+                $msgType = 'danger';
+            }
+        }
+    }
+
     // ========== SCHOLAR ==========
     if ($genType === 'scholar') {
         $scholarName = trim($_POST['scholar_name'] ?? '');
@@ -1085,6 +1113,169 @@ function generateGammaPresentation(string $lessonName, string $content, string $
     return ['success' => false, 'error' => 'انتهت مهلة الانتظار'];
 }
 
+function generateInfographic(string $lessonName, string $content, string $openaiKey, string $extraInstructions, int $lessonId, $db): array {
+    if (empty($openaiKey)) {
+        return ['success' => false, 'error' => 'مفتاح OpenAI مطلوب لتوليد المخطط البصري. يرجى إضافة OPENAI_API_KEY في إعدادات النظام.'];
+    }
+
+    // 1. استخراج المحتوى المنظم من النص العربي باستخدام Gemini
+    $geminiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
+    $truncated = mb_substr($content, 0, 8000);
+
+    $structurePrompt = <<<PROMPT
+استخرج المحتوى التعليمي الأساسي من النص التالي لدرس «{$lessonName}» وقدمه بصيغة JSON منظمة:
+
+النص:
+{$truncated}
+
+أجب بـ JSON فقط (بدون أي نص إضافي):
+{
+  "definition": "التعريف المختصر للمفهوم الرئيسي (جملة أو جملتان)",
+  "types": ["النوع الأول", "النوع الثاني"],
+  "conditions": ["الشرط الأول", "الشرط الثاني"],
+  "grammatical_cases": ["الحالة الإعرابية الأولى", "الحالة الثانية"],
+  "key_rules": ["القاعدة الأولى", "القاعدة الثانية", "القاعدة الثالثة"],
+  "examples": ["مثال أول", "مثال ثاني", "مثال ثالث"]
+}
+PROMPT;
+
+    $structuredContent = null;
+    if (!empty($geminiKey)) {
+        $structResult = callAI($structurePrompt, $geminiKey, 'gemini');
+        if ($structResult['success']) {
+            $cleanJson = cleanJsonResponse($structResult['text']);
+            $structuredContent = @json_decode($cleanJson, true);
+        }
+    }
+
+    // بناء وصف المحتوى للبرومبت
+    $contentDesc = "Lesson: {$lessonName}\n";
+    if ($structuredContent) {
+        if (!empty($structuredContent['definition'])) {
+            $contentDesc .= "Definition: " . $structuredContent['definition'] . "\n";
+        }
+        if (!empty($structuredContent['types'])) {
+            $contentDesc .= "Types: " . implode(', ', array_slice($structuredContent['types'], 0, 5)) . "\n";
+        }
+        if (!empty($structuredContent['conditions'])) {
+            $contentDesc .= "Conditions: " . implode(', ', array_slice($structuredContent['conditions'], 0, 4)) . "\n";
+        }
+        if (!empty($structuredContent['grammatical_cases'])) {
+            $contentDesc .= "Grammatical Cases: " . implode(', ', array_slice($structuredContent['grammatical_cases'], 0, 4)) . "\n";
+        }
+        if (!empty($structuredContent['key_rules'])) {
+            $contentDesc .= "Key Rules: " . implode(', ', array_slice($structuredContent['key_rules'], 0, 5)) . "\n";
+        }
+        if (!empty($structuredContent['examples'])) {
+            $contentDesc .= "Examples: " . implode(', ', array_slice($structuredContent['examples'], 0, 3)) . "\n";
+        }
+    } else {
+        $contentDesc .= mb_substr($content, 0, 500);
+    }
+
+    // 2. بناء برومبت احترافي لتوليد الصورة
+    $imagePrompt = "Professional educational infographic for Arabic grammar lesson '{$lessonName}'.
+
+DESIGN: Modern organizational structure on a dark navy blue background (#0A1628) with glowing cyan/teal neon borders and light effects.
+
+LAYOUT (vertical portrait infographic):
+- TOP SECTION: Large golden Arabic calligraphy title area, prominent lesson name, definition card with glowing border
+- MIDDLE SECTION: Grid of semi-transparent cards with glowing borders containing:
+  * Types and categories (أنواع وأقسام) - blue accent cards
+  * Cases and conditions (حالات وشروط) - purple accent cards  
+  * Core grammar rules (قواعد أساسية) - teal accent cards
+  * Examples (أمثلة) - orange accent cards
+- BOTTOM SECTION: Key takeaways with minimalist tech icons
+
+VISUAL STYLE:
+- Dark navy blue background with subtle grid pattern
+- Glowing neon borders (cyan/teal) on each card
+- Golden/amber title text
+- White body text on dark cards
+- Simple geometric tech icons (circles, triangles, arrows) next to each rule
+- Subtle light ray effects making info prominent
+- Professional clean modern educational layout
+
+CONTENT:
+{$contentDesc}";
+
+    if (!empty($extraInstructions)) {
+        $imagePrompt .= "\n\nAdditional requirements: {$extraInstructions}";
+    }
+
+    // 3. استدعاء OpenAI Images API (DALL-E 3)
+    $url = "https://api.openai.com/v1/images/generations";
+    $payload = json_encode([
+        'model'   => 'dall-e-3',
+        'prompt'  => mb_substr($imagePrompt, 0, 4000),
+        'n'       => 1,
+        'size'    => '1024x1792',
+        'quality' => 'hd',
+        'style'   => 'vivid'
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $openaiKey,
+            'Content-Type: application/json'
+        ],
+        CURLOPT_TIMEOUT        => 120
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        $errorData = @json_decode($response, true);
+        $errorMsg  = $errorData['error']['message'] ?? ($curlError ?: 'خطأ غير معروف');
+        return ['success' => false, 'error' => "فشل توليد الصورة من OpenAI (HTTP {$httpCode}): " . mb_substr($errorMsg, 0, 300)];
+    }
+
+    $data     = json_decode($response, true);
+    $imageUrl = $data['data'][0]['url'] ?? '';
+
+    if (empty($imageUrl)) {
+        return ['success' => false, 'error' => 'لم يتم إرجاع رابط الصورة من OpenAI'];
+    }
+
+    // 4. تحميل الصورة وحفظها محلياً في /uploads/infografic/
+    $uploadPath = UPLOAD_DIR . 'infografic/';
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0755, true);
+    }
+
+    $ch = curl_init($imageUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER  => true,
+        CURLOPT_FOLLOWLOCATION  => true,
+        CURLOPT_TIMEOUT         => 60
+    ]);
+    $imageContent = curl_exec($ch);
+    $dlCode       = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($dlCode !== 200 || empty($imageContent)) {
+        return ['success' => false, 'error' => 'فشل تحميل الصورة المولدة من الخادم'];
+    }
+
+    $fileName  = 'infografic_lesson_' . $lessonId . '_' . time() . '.png';
+    $filePath  = $uploadPath . $fileName;
+
+    if (!file_put_contents($filePath, $imageContent)) {
+        return ['success' => false, 'error' => 'فشل حفظ الصورة على الخادم'];
+    }
+
+    $infograficUrl = '/uploads/infografic/' . $fileName;
+    $db->prepare("UPDATE lessons SET infographic_url=? WHERE id=?")->execute([$infograficUrl, $lessonId]);
+
+    return ['success' => true, 'infographic_url' => $infograficUrl];
+}
+
 function callAI(string $prompt, string $apiKey, string $provider): array {
     if (empty($apiKey)) {
         return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API'];
@@ -1452,6 +1643,50 @@ $configuredProviders = array_keys(array_filter($envKeys));
       </form>
     </div>
 
+    <!-- Infographic -->
+    <div class="card">
+      <div class="card-header"><div class="card-title"><i class="fas fa-project-diagram" style="color:#7C4DFF;"></i> توليد المخطط البصري</div></div>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد إنفوجرافيك تعليمي احترافي من محتوى الدرس بواسطة DALL-E 3</p>
+
+      <?php if (!empty($lesson['infographic_url'])): ?>
+      <div style="margin-bottom:1rem;padding:.75rem;background:#EDE7F6;border-radius:var(--radius-sm);text-align:center;">
+        <strong style="color:#512DA8;"><i class="fas fa-check-circle"></i> يوجد مخطط بصري محفوظ</strong>
+        <a href="<?= clean($lesson['infographic_url']) ?>" target="_blank" class="btn btn-sm btn-primary" style="margin-right:.5rem;">
+          <i class="fas fa-eye"></i> معاينة
+        </a>
+      </div>
+      <?php endif; ?>
+
+      <form method="POST" enctype="multipart/form-data" onsubmit="return validateInfograficForm()">
+        <input type="hidden" name="gen_type" value="infographic">
+        <input type="hidden" name="provider" value="openai">
+        <input type="hidden" name="api_key_override" id="infApiKey">
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-file-pdf" style="color:#E53935;"></i> ملف PDF الدرس (اختياري)</label>
+          <input type="file" name="infographic_pdf" id="infographicPdf" class="form-control" accept=".pdf">
+          <small style="color:var(--muted);display:block;margin-top:.25rem;">
+            إذا لم ترفع ملفاً سيُستخدم PDF الدرس المرفوع مسبقاً
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-sliders-h"></i> تعليمات إضافية مخصصة (اختياري)</label>
+          <textarea name="infographic_extra" class="form-control" rows="2"
+            placeholder="مثال: ركز على الحالات الإعرابية للمبتدأ والخبر فقط"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-block" style="background:#7C4DFF;color:#fff;" onclick="document.getElementById('infApiKey').value = document.getElementById('apiKeyOverride').value.trim();">
+          <i class="fas fa-magic"></i> توليد المخطط البصري
+        </button>
+
+        <div style="margin-top:1rem;padding:.5rem;background:#f8f9fa;border-radius:4px;font-size:.75rem;color:#6c757d;text-align:center;">
+          <i class="fas fa-info-circle" style="font-size:.7rem;"></i>
+          يستخدم OpenAI DALL-E 3 لتوليد صورة إنفوجرافيك عالية الجودة • يحتاج مفتاح OpenAI API
+        </div>
+      </form>
+    </div>
+
     <!-- Scholar -->
     <div class="card">
       <div class="card-header"><div class="card-title"><i class="fas fa-scroll"></i> إضافة عالم نحو</div></div>
@@ -1517,6 +1752,16 @@ function validateScholarForm() {
   const provider = document.getElementById('providerSel').value;
   if (provider === 'gamma') {
     alert('Gamma للعروض فقط');
+    return false;
+  }
+  return true;
+}
+
+function validateInfograficForm() {
+  const key = document.getElementById('apiKeyOverride').value.trim();
+  const hasEnvKey = CONFIGURED.includes('openai');
+  if (!key && !hasEnvKey) {
+    alert('يرجى إدخال مفتاح OpenAI API لتوليد المخطط البصري');
     return false;
   }
   return true;

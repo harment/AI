@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS lessons (
     podcast_url VARCHAR(500) DEFAULT NULL,
     video_url VARCHAR(500) DEFAULT NULL,
     presentation_html LONGTEXT DEFAULT NULL,
+    presentation_pdf VARCHAR(500) DEFAULT NULL,
+    infographic_url VARCHAR(500) DEFAULT NULL,
     is_open TINYINT(1) NOT NULL DEFAULT 0,
     sort_order INT NOT NULL DEFAULT 0,
     game_type ENUM('mountain','maze','ship') NOT NULL DEFAULT 'mountain',

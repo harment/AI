@@ -150,6 +150,35 @@ if (!empty($lesson['video_url'])) {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+  .infographic-container {
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 90vh;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: #0a0f1a;
+    border-radius: var(--radius-sm);
+    -webkit-overflow-scrolling: touch;
+  }
+  .infographic-img {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  @media (max-width: 768px) {
+    .infographic-container {
+      max-height: 80vh;
+      padding: .5rem;
+    }
+    .infographic-img {
+      max-width: 100%;
+    }
+  }
   </style>
 </head>
 <body data-lesson-id="<?= $lessonId ?>">
@@ -182,6 +211,9 @@ if (!empty($lesson['video_url'])) {
     <button class="tab-btn active" data-tab-target="tabPresentation"><i class="fas fa-file-powerpoint" style="color:#E53935;"></i> العرض التقديمي</button>
     <button class="tab-btn" data-tab-target="tabPodcast"><i class="fas fa-podcast" style="color:var(--info);"></i> البودكاست</button>
     <button class="tab-btn" data-tab-target="tabVideo"><i class="fas fa-video" style="color:var(--accent);"></i> الفيديو التعليمي</button>
+    <?php if (!empty($lesson['infographic_url'])): ?>
+    <button class="tab-btn" data-tab-target="tabInfographic"><i class="fas fa-project-diagram" style="color:#7C4DFF;"></i> المخطط البصري</button>
+    <?php endif; ?>
     <button class="tab-btn" data-tab-target="tabGame"><i class="fas fa-gamepad" style="color:var(--primary);"></i> لعبة المغامرة</button>
   </div>
 
@@ -301,6 +333,28 @@ if (!empty($lesson['video_url'])) {
       <?php endif; ?>
     </div>
   </div>
+
+  <!-- Tab: Infographic -->
+  <?php if (!empty($lesson['infographic_url'])): ?>
+  <div id="tabInfographic" class="tab-pane">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fas fa-project-diagram" style="color:#7C4DFF;"></i> المخطط البصري للدرس</div>
+      </div>
+      <div class="infographic-container">
+        <img
+          src="<?= clean($lesson['infographic_url']) ?>"
+          alt="المخطط البصري لدرس <?= clean($lesson['name']) ?>"
+          class="infographic-img"
+          loading="lazy"
+        >
+      </div>
+      <div class="alert alert-info" style="margin:1rem;">
+        <i class="fas fa-lightbulb"></i> مخطط بصري تعليمي احترافي مُولَّد بالذكاء الاصطناعي من محتوى الدرس
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
 
   <!-- Tab: Game -->
   <div id="tabGame" class="tab-pane">

@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS courses (
     FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE
 );
 
--- جدول الدروس (محدّث مع presentation_pdf)
+-- جدول الدروس (محدّث مع presentation_pdf و infographic_url)
 CREATE TABLE IF NOT EXISTS lessons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS lessons (
     video_url VARCHAR(500) DEFAULT NULL,
     presentation_html LONGTEXT DEFAULT NULL,
     presentation_pdf VARCHAR(500) DEFAULT NULL,
+    infographic_url VARCHAR(500) DEFAULT NULL,
     is_open TINYINT(1) NOT NULL DEFAULT 0,
     sort_order INT NOT NULL DEFAULT 0,
     game_type ENUM('mountain','maze','ship') NOT NULL DEFAULT 'mountain',
