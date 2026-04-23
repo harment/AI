@@ -3,6 +3,7 @@ uploads/pdfs/*
 uploads/podcasts/*
 uploads/videos/*
 uploads/images/*
+uploads/infografic/*
 !uploads/**/.gitkeep
 
 # Environment / secrets

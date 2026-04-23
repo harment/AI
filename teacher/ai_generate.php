@@ -20,6 +20,7 @@ $envKeys = [
     'gamma'       => defined('GAMMA_API_KEY') ? GAMMA_API_KEY : '',
     'elevenlabs'  => defined('ELEVENLABS_API_KEY') ? ELEVENLABS_API_KEY : '',
     'heygen'      => defined('HEYGEN_API_KEY') ? HEYGEN_API_KEY : '',
+    'flux'        => defined('FLUX_API_KEY') ? FLUX_API_KEY : '',
 ];
 
 // ========== AJAX: فحص حالة الفيديو ==========
@@ -462,8 +463,7 @@ PROMPT;
     }
 
     // ========== SCHOLAR ==========
-    if ($genType === 'scholar') {
-        $scholarName = trim($_POST['scholar_name'] ?? '');
+    if ($genType === 'scholar') {        $scholarName = trim($_POST['scholar_name'] ?? '');
         if (empty($scholarName)) {
             $msg = 'يرجى إدخال اسم العالم.';
             $msgType = 'warning';
@@ -492,6 +492,64 @@ PROMPT;
                 $msg = 'فشل الاستدعاء: ' . $result['error']; 
                 $msgType = 'danger';
             }
+        }
+    }
+
+    // ========== INFOGRAPHIC ==========
+    if ($genType === 'infographic') {
+        // خيار أ: رفع صورة من جهاز المستخدم
+        if (isset($_FILES['infographic_file']) && $_FILES['infographic_file']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['infographic_file'];
+            $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $msg     = 'صيغة الملف غير مدعومة. يرجى رفع JPG أو PNG أو WebP.';
+                $msgType = 'danger';
+            } else {
+                $safeFileName = 'infographic_lesson_' . $lessonId . '_' . time() . '.' . $ext;
+                $uploadPath   = UPLOAD_DIR . 'infografic/';
+
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+
+                $filePath = $uploadPath . $safeFileName;
+                if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                    $infographicUrl = '/uploads/infografic/' . $safeFileName;
+                    $db->prepare("UPDATE lessons SET infographic_url=? WHERE id=?")->execute([$infographicUrl, $lessonId]);
+                    $msg = 'تم رفع الإنفوجرافيك بنجاح!';
+                } else {
+                    $msg     = 'فشل رفع الملف. يرجى المحاولة مرة أخرى.';
+                    $msgType = 'danger';
+                }
+            }
+        }
+        // خيار ب: توليد إنفوجرافيك عبر Flux AI
+        elseif (!empty($_POST['generate_infographic_from_pdf'])) {
+            $pdfContent = '';
+
+            if (!empty($lesson['pdf_url'])) {
+                $pdfPath    = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
+                $pdfContent = extractPdfText($pdfPath);
+            }
+
+            if (empty($pdfContent)) {
+                $msg     = 'لم يتم العثور على ملف PDF للدرس. يرجى رفع PDF أولاً.';
+                $msgType = 'warning';
+            } else {
+                $fluxKey = $submittedKey ?: ($envKeys['flux'] ?? '');
+                $result  = generateInfographicWithFlux($lesson['name'], $pdfContent, $fluxKey, $lessonId, $db);
+
+                if ($result['success']) {
+                    $msg = 'تم توليد الإنفوجرافيك بنجاح! <a href="' . htmlspecialchars($result['infographic_url']) . '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-image"></i> عرض الإنفوجرافيك</a>';
+                } else {
+                    $msg     = 'فشل توليد الإنفوجرافيك: ' . $result['error'];
+                    $msgType = 'danger';
+                }
+            }
+        } else {
+            $msg     = 'يرجى رفع صورة أو طلب التوليد من PDF.';
+            $msgType = 'warning';
         }
     }
 }
@@ -1221,6 +1279,201 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     return ['success' => false, 'error' => 'مزود غير معروف'];
 }
 
+// ========== FLUX INFOGRAPHIC HELPERS ==========
+
+function generateInfographicWithFlux(string $lessonName, string $content, string $apiKey, int $lessonId, $db): array {
+    $fluxKey = !empty($apiKey) ? $apiKey : (defined('FLUX_API_KEY') ? FLUX_API_KEY : '');
+
+    if (empty($fluxKey)) {
+        return ['success' => false, 'error' => 'مفتاح Flux API مطلوب. يرجى إضافة FLUX_API_KEY في إعدادات البيئة أو إدخاله يدوياً.'];
+    }
+
+    $uploadPath = UPLOAD_DIR . 'infografic/';
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0755, true);
+    }
+
+    $truncated = mb_substr($content, 0, 2000); // limit prompt size
+
+    $prompt = "Educational Arabic infographic for the lesson «{$lessonName}». "
+        . "Create a clear visual tree/hierarchical diagram showing: "
+        . "main lesson title, key types with Arabic examples, sub-categories, patterns. "
+        . "Use comfortable colors (green, gold, white background), large clear Arabic font, "
+        . "landscape 1280x720 format. "
+        . "Content: {$truncated}. "
+        . "Professional educational design that helps students understand the lesson from a single image.";
+
+    // Flux Kontext API – text-to-image endpoint
+    $url = 'https://api.fluxapi.ai/v1/flux-kontext-pro';
+
+    $payload = json_encode([
+        'prompt'        => $prompt,
+        'aspect_ratio'  => '16:9',
+        'output_format' => 'png',
+        'width'         => 1280,
+        'height'        => 720,
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $fluxKey,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_TIMEOUT => 120,
+    ]);
+
+    $response  = curl_exec($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || !empty($curlError)) {
+        return ['success' => false, 'error' => 'فشل الاتصال بـ Flux API: ' . $curlError];
+    }
+
+    if ($httpCode !== 200 && $httpCode !== 201 && $httpCode !== 202) {
+        $errorData = @json_decode($response, true);
+        $errorMsg  = $errorData['message'] ?? ($errorData['error']['message'] ?? ($errorData['error'] ?? ('خطأ HTTP ' . $httpCode)));
+        if (is_array($errorMsg)) {
+            $errorMsg = json_encode($errorMsg, JSON_UNESCAPED_UNICODE);
+        }
+        return ['success' => false, 'error' => 'خطأ من Flux API: ' . mb_substr((string)$errorMsg, 0, 300)];
+    }
+
+    $data = @json_decode($response, true);
+    if ($data === null) {
+        return ['success' => false, 'error' => 'فشل تحليل استجابة Flux API.'];
+    }
+
+    // ---- الحالة 1: task/polling (استجابة غير متزامنة) ----
+    $taskId = $data['task_id'] ?? ($data['id'] ?? ($data['request_id'] ?? ''));
+    if (!empty($taskId)) {
+        $pollingUrl = $data['polling_url'] ?? ('https://api.fluxapi.ai/v1/status/' . $taskId);
+        return _pollAndSaveFluxImage($taskId, $pollingUrl, $fluxKey, $lessonId, $db, $uploadPath);
+    }
+
+    // ---- الحالة 2: رابط صورة مباشر ----
+    $imageUrl = $data['image_url']
+        ?? ($data['images'][0]['url'] ?? '')
+        ?: ($data['result']['url'] ?? ($data['url'] ?? ''));
+    if (!empty($imageUrl)) {
+        return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
+    }
+
+    // ---- الحالة 3: صورة base64 ----
+    $base64 = $data['image']
+        ?? ($data['images'][0]['b64_json'] ?? '')
+        ?: ($data['result']['base64'] ?? '');
+    if (!empty($base64)) {
+        return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
+    }
+
+    return ['success' => false, 'error' => 'لم تُعد Flux API أي صورة. يرجى المحاولة مرة أخرى.'];
+}
+
+function _pollAndSaveFluxImage(string $taskId, string $pollingUrl, string $apiKey, int $lessonId, $db, string $uploadPath): array {
+    $maxAttempts   = 20; // 20 attempts × 6 s = 120 s max wait
+    $pollIntervalS = 6;  // seconds between each status check
+
+    for ($i = 0; $i < $maxAttempts; $i++) {
+        sleep($pollIntervalS);
+
+        $ch = curl_init($pollingUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $apiKey,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $pollResp = curl_exec($ch);
+        $pollCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($pollCode !== 200 || empty($pollResp)) {
+            continue;
+        }
+
+        $pollData = @json_decode($pollResp, true);
+        if (!is_array($pollData)) {
+            continue;
+        }
+
+        $status = $pollData['status'] ?? ($pollData['state'] ?? '');
+
+        if (in_array($status, ['completed', 'succeeded', 'done', ''])) {
+            $imageUrl = $pollData['image_url']
+                ?? ($pollData['images'][0]['url'] ?? '')
+                ?: ($pollData['result']['url'] ?? ($pollData['url'] ?? ''));
+
+            if (!empty($imageUrl)) {
+                return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
+            }
+
+            $base64 = $pollData['image']
+                ?? ($pollData['images'][0]['b64_json'] ?? '')
+                ?: ($pollData['result']['base64'] ?? '');
+            if (!empty($base64)) {
+                return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
+            }
+        } elseif (in_array($status, ['failed', 'error', 'cancelled'])) {
+            $errMsg = $pollData['error'] ?? ($pollData['message'] ?? 'فشل توليد الصورة.');
+            return ['success' => false, 'error' => (string)$errMsg];
+        }
+        // processing – استمر في الانتظار
+    }
+
+    return ['success' => false, 'error' => 'انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى.'];
+}
+
+function _downloadAndSaveFluxImage(string $imageUrl, int $lessonId, $db, string $uploadPath): array {
+    $ch = curl_init($imageUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 60,
+    ]);
+    $imageContent = curl_exec($ch);
+    $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if (!$imageContent || $httpCode !== 200) {
+        return ['success' => false, 'error' => 'فشل تحميل الصورة من الرابط المُعاد (HTTP ' . $httpCode . ').'];
+    }
+
+    return _writeFluxImageToDisk($imageContent, $lessonId, $db, $uploadPath);
+}
+
+function _saveBase64FluxImage(string $base64, int $lessonId, $db, string $uploadPath): array {
+    if (str_contains($base64, ',')) {
+        $base64 = explode(',', $base64, 2)[1];
+    }
+    $imageContent = base64_decode($base64, true);
+    if ($imageContent === false) {
+        return ['success' => false, 'error' => 'فشل فك ترميز الصورة (base64).'];
+    }
+    return _writeFluxImageToDisk($imageContent, $lessonId, $db, $uploadPath);
+}
+
+function _writeFluxImageToDisk(string $imageContent, int $lessonId, $db, string $uploadPath): array {
+    $safeFileName = 'infographic_lesson_' . $lessonId . '_' . time() . '.png';
+    $filePath     = $uploadPath . $safeFileName;
+
+    if (!file_put_contents($filePath, $imageContent)) {
+        return ['success' => false, 'error' => 'فشل حفظ ملف الصورة على السيرفر.'];
+    }
+
+    $infographicUrl = '/uploads/infografic/' . $safeFileName;
+    $db->prepare("UPDATE lessons SET infographic_url=? WHERE id=?")->execute([$infographicUrl, $lessonId]);
+
+    return ['success' => true, 'infographic_url' => $infographicUrl];
+}
+
 $configuredProviders = array_keys(array_filter($envKeys));
 ?>
 <!DOCTYPE html>
@@ -1301,6 +1554,11 @@ $configuredProviders = array_keys(array_filter($envKeys));
         <optgroup label="توليد الفيديو">
           <option value="heygen" <?= in_array('heygen', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
             HeyGen (مقدم افتراضي) <?= in_array('heygen', $configuredProviders) ? '✓' : '' ?>
+          </option>
+        </optgroup>
+        <optgroup label="توليد الصور">
+          <option value="flux" <?= in_array('flux', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+            Flux Kontext (إنفوجرافيك) <?= in_array('flux', $configuredProviders) ? '✓' : '' ?>
           </option>
         </optgroup>
       </select>
@@ -1468,6 +1726,52 @@ $configuredProviders = array_keys(array_filter($envKeys));
           <i class="fas fa-magic"></i> جلب المعلومات
         </button>
       </form>
+    </div>
+
+    <!-- Infographic -->
+    <div class="card">
+      <div class="card-header"><div class="card-title"><i class="fas fa-project-diagram" style="color:#8E24AA;"></i> المخطط البصري (Infographic)</div></div>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">رفع صورة | توليد إنفوجرافيك تعليمي من PDF (Flux AI)</p>
+
+      <form method="POST" enctype="multipart/form-data" id="infographicForm">
+        <input type="hidden" name="gen_type" value="infographic">
+        <input type="hidden" name="provider" id="infProvider">
+        <input type="hidden" name="api_key_override" id="infApiKey">
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-image"></i> رفع صورة (JPG / PNG / WebP)</label>
+          <input type="file" name="infographic_file" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+        </div>
+
+        <button type="submit" class="btn btn-block" style="background:#8E24AA;color:#fff;" onclick="injectFormVars(this.form)">
+          <i class="fas fa-save"></i> حفظ الصورة المرفوعة
+        </button>
+
+        <button type="submit" name="generate_infographic_from_pdf" value="1"
+                class="btn btn-outline btn-block" style="margin-top:.5rem;"
+                onclick="injectFormVars(this.form)">
+          <i class="fas fa-magic"></i> توليد من PDF الدرس (Flux AI)
+        </button>
+
+        <div style="margin-top:.75rem;padding:.5rem;background:#f8f9fa;border-radius:4px;font-size:.75rem;color:#6c757d;text-align:center;">
+          <i class="fas fa-info-circle"></i>
+          المقاس المستهدف: 1280×720 بكسل • يتطلب مفتاح Flux API
+        </div>
+      </form>
+
+      <?php if (!empty($lesson['infographic_url'])): ?>
+      <div style="margin-top:1rem;text-align:center;">
+        <img src="<?= htmlspecialchars($lesson['infographic_url']) ?>"
+             alt="الإنفوجرافيك الحالي"
+             style="max-width:100%;border-radius:var(--radius-sm);border:2px solid var(--border);cursor:pointer;"
+             onclick="window.open(this.src,'_blank')">
+        <div style="margin-top:.5rem;">
+          <a href="<?= htmlspecialchars($lesson['infographic_url']) ?>" target="_blank" class="btn btn-sm btn-primary">
+            <i class="fas fa-external-link-alt"></i> فتح في تبويب جديد
+          </a>
+        </div>
+      </div>
+      <?php endif; ?>
     </div>
 
   </div>
