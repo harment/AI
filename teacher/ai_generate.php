@@ -1282,7 +1282,7 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
 // ========== FLUX INFOGRAPHIC HELPERS ==========
 
 function generateInfographicWithFlux(string $lessonName, string $content, string $apiKey, int $lessonId, $db): array {
-    $fluxKey = !empty($apiKey) ? $apiKey : (defined('FLUX_API_KEY') ? FLUX_API_KEY : '');
+    $fluxKey = trim(!empty($apiKey) ? $apiKey : (defined('FLUX_API_KEY') ? FLUX_API_KEY : ''));
 
     if (empty($fluxKey)) {
         return ['success' => false, 'error' => 'مفتاح Flux API مطلوب. يرجى إضافة FLUX_API_KEY في إعدادات البيئة أو إدخاله يدوياً.'];
@@ -1358,91 +1358,21 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
     }
 
     // ---- الحالة 1: رابط صورة مباشر ----
-    $imageUrl = _fluxFirstNonEmptyString($data, [
-        'imageUrl',
-        'image_url',
-        'url',
-        'images.0.url',
-        'data.imageUrl',
-        'data.image_url',
-        'data.url',
-        'data.images.0.url',
-        'result.imageUrl',
-        'result.image_url',
-        'result.url',
-        'result.images.0.url',
-        'output.imageUrl',
-        'output.image_url',
-        'output.url',
-    ]);
+    $imageUrl = _fluxFirstNonEmptyString($data, _fluxImageUrlPaths());
     if (!empty($imageUrl)) {
         return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
     }
 
     // ---- الحالة 2: صورة base64 ----
-    $base64 = _fluxFirstNonEmptyString($data, [
-        'image',
-        'base64',
-        'b64_json',
-        'imageBase64',
-        'images.0.b64_json',
-        'data.image',
-        'data.base64',
-        'data.b64_json',
-        'data.imageBase64',
-        'data.images.0.b64_json',
-        'result.image',
-        'result.base64',
-        'result.b64_json',
-        'result.imageBase64',
-        'result.images.0.b64_json',
-        'output.image',
-        'output.base64',
-        'output.b64_json',
-    ]);
+    $base64 = _fluxFirstNonEmptyString($data, _fluxBase64Paths());
     if (!empty($base64)) {
         return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
     }
 
     // ---- الحالة 3: task/polling (استجابة غير متزامنة) ----
-    $taskId = _fluxFirstNonEmptyString($data, [
-        'task_id',
-        'taskId',
-        'request_id',
-        'requestId',
-        'job_id',
-        'jobId',
-        'id',
-        'data.task_id',
-        'data.taskId',
-        'data.request_id',
-        'data.requestId',
-        'data.job_id',
-        'data.jobId',
-        'data.id',
-        'result.task_id',
-        'result.taskId',
-        'result.request_id',
-        'result.requestId',
-        'result.job_id',
-        'result.jobId',
-        'result.id',
-    ]);
+    $taskId = _fluxFirstNonEmptyString($data, _fluxTaskIdPaths());
     if (!empty($taskId)) {
-        $pollingUrl = _fluxFirstNonEmptyString($data, [
-            'polling_url',
-            'pollingUrl',
-            'status_url',
-            'statusUrl',
-            'data.polling_url',
-            'data.pollingUrl',
-            'data.status_url',
-            'data.statusUrl',
-            'result.polling_url',
-            'result.pollingUrl',
-            'result.status_url',
-            'result.statusUrl',
-        ]);
+        $pollingUrl = _fluxFirstNonEmptyString($data, _fluxPollingUrlPaths());
         if (empty($pollingUrl)) {
             $pollingUrl = 'https://api.fluxapi.ai/api/v1/status/' . $taskId;
         }
@@ -1451,7 +1381,7 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
 
     $rawPreview = mb_substr($response, 0, 500);
     $keys       = implode(', ', array_keys($data));
-    return ['success' => false, 'error' => 'لم تُعد Flux API أي صورة. مفاتيح الاستجابة: [' . $keys . ']. المعاينة: ' . $rawPreview];
+    return ['success' => false, 'error' => 'لم تُعد Flux API أي صورة. مفاتيح الاستجابة (top-level): [' . $keys . ']. raw preview: ' . $rawPreview];
 }
 
 function _fluxGetByPath($data, string $path) {
@@ -1487,6 +1417,106 @@ function _fluxFirstNonEmptyString(array $data, array $paths): string {
     return '';
 }
 
+function _fluxImageUrlPaths(): array {
+    return [
+        'imageUrl',
+        'image_url',
+        'url',
+        'images.0.url',
+        'data.imageUrl',
+        'data.image_url',
+        'data.url',
+        'data.images.0.url',
+        'result.imageUrl',
+        'result.image_url',
+        'result.url',
+        'result.images.0.url',
+        'output.imageUrl',
+        'output.image_url',
+        'output.url',
+        'output.images.0.url',
+    ];
+}
+
+function _fluxBase64Paths(): array {
+    return [
+        'image',
+        'base64',
+        'b64_json',
+        'imageBase64',
+        'images.0.b64_json',
+        'data.image',
+        'data.base64',
+        'data.b64_json',
+        'data.imageBase64',
+        'data.images.0.b64_json',
+        'result.image',
+        'result.base64',
+        'result.b64_json',
+        'result.imageBase64',
+        'result.images.0.b64_json',
+        'output.image',
+        'output.base64',
+        'output.b64_json',
+        'output.imageBase64',
+        'output.images.0.b64_json',
+    ];
+}
+
+function _fluxTaskIdPaths(): array {
+    return [
+        'task_id',
+        'taskId',
+        'request_id',
+        'requestId',
+        'job_id',
+        'jobId',
+        'id',
+        'data.task_id',
+        'data.taskId',
+        'data.request_id',
+        'data.requestId',
+        'data.job_id',
+        'data.jobId',
+        'data.id',
+        'result.task_id',
+        'result.taskId',
+        'result.request_id',
+        'result.requestId',
+        'result.job_id',
+        'result.jobId',
+        'result.id',
+        'output.task_id',
+        'output.taskId',
+        'output.request_id',
+        'output.requestId',
+        'output.job_id',
+        'output.jobId',
+        'output.id',
+    ];
+}
+
+function _fluxPollingUrlPaths(): array {
+    return [
+        'polling_url',
+        'pollingUrl',
+        'status_url',
+        'statusUrl',
+        'data.polling_url',
+        'data.pollingUrl',
+        'data.status_url',
+        'data.statusUrl',
+        'result.polling_url',
+        'result.pollingUrl',
+        'result.status_url',
+        'result.statusUrl',
+        'output.polling_url',
+        'output.pollingUrl',
+        'output.status_url',
+        'output.statusUrl',
+    ];
+}
+
 function _pollAndSaveFluxImage(string $taskId, string $pollingUrl, string $apiKey, int $lessonId, $db, string $uploadPath): array {
     $maxAttempts   = 20; // 20 attempts × 6 s = 120 s max wait
     $pollIntervalS = 6;  // seconds between each status check
@@ -1516,48 +1546,13 @@ function _pollAndSaveFluxImage(string $taskId, string $pollingUrl, string $apiKe
             continue;
         }
 
-        $imageUrl = _fluxFirstNonEmptyString($pollData, [
-            'imageUrl',
-            'image_url',
-            'url',
-            'images.0.url',
-            'data.imageUrl',
-            'data.image_url',
-            'data.url',
-            'data.images.0.url',
-            'result.imageUrl',
-            'result.image_url',
-            'result.url',
-            'result.images.0.url',
-            'output.imageUrl',
-            'output.image_url',
-            'output.url',
-        ]);
+        $imageUrl = _fluxFirstNonEmptyString($pollData, _fluxImageUrlPaths());
 
         if (!empty($imageUrl)) {
             return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
         }
 
-        $base64 = _fluxFirstNonEmptyString($pollData, [
-            'image',
-            'base64',
-            'b64_json',
-            'imageBase64',
-            'images.0.b64_json',
-            'data.image',
-            'data.base64',
-            'data.b64_json',
-            'data.imageBase64',
-            'data.images.0.b64_json',
-            'result.image',
-            'result.base64',
-            'result.b64_json',
-            'result.imageBase64',
-            'result.images.0.b64_json',
-            'output.image',
-            'output.base64',
-            'output.b64_json',
-        ]);
+        $base64 = _fluxFirstNonEmptyString($pollData, _fluxBase64Paths());
         if (!empty($base64)) {
             return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
         }
