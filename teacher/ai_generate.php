@@ -1697,7 +1697,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
         </optgroup>
 		<optgroup label="توليد المخطط البصري">
           <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-            Gemini 3.1 Flash Image Preview (Nano Banana 2) <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+            Gemini 3.1 Flash Image Preview <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
           </option>
         </optgroup>
       </select>
