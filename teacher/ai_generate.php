@@ -1337,11 +1337,17 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
 
     if ($httpCode !== 200 && $httpCode !== 201 && $httpCode !== 202) {
         $errorData = @json_decode($response, true);
-        $errorMsg  = $errorData['message'] ?? ($errorData['error']['message'] ?? ($errorData['error'] ?? ('خطأ HTTP ' . $httpCode)));
+        // Build a useful message: prefer structured API error, fall back to raw body
+        $errorMsg = $errorData['message']
+            ?? ($errorData['error']['message'] ?? ($errorData['error'] ?? null));
         if (is_array($errorMsg)) {
             $errorMsg = json_encode($errorMsg, JSON_UNESCAPED_UNICODE);
         }
-        return ['success' => false, 'error' => 'خطأ من Flux API: ' . mb_substr((string)$errorMsg, 0, 300)];
+        if (empty($errorMsg)) {
+            // No structured error – show raw response so the developer can diagnose
+            $errorMsg = !empty($response) ? mb_substr($response, 0, 300) : 'لا يوجد محتوى في الاستجابة';
+        }
+        return ['success' => false, 'error' => 'خطأ من Flux API (HTTP ' . $httpCode . '): ' . (string)$errorMsg];
     }
 
     $data = @json_decode($response, true);
