@@ -1505,7 +1505,7 @@ function generateInfographicWithGemini(string $lessonName, string $content, stri
 
     $models = [
         'gemini-3.1-flash-image-preview',
-        'gemini-2.5-flash-image-preview',
+        
     ];
 
     $lastError = 'تعذر توليد صورة الإنفوجرافيك عبر Gemini.';
@@ -1640,7 +1640,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
 </head>
 <body>
 <nav class="navbar">
-  <div class="navbar-brand"><button id="sidebarToggle" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;display:none;"><i class="fas fa-bars"></i></button><span>👨‍🏫</span><span>لوحة الأستاذ</span></div>
+  <div class="navbar-brand"><button id="sidebarToggle" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;display:none;"><i class="fas fa-bars"></i></button><span>�‍�</span><span>لوحة الأستاذ</span></div>
   <ul class="navbar-nav"><li><a href="/api/auth.php?action=logout_teacher" class="nav-link"><i class="fas fa-sign-out-alt"></i> خروج</a></li></ul>
 </nav>
 <aside class="sidebar">
@@ -1930,20 +1930,6 @@ $configuredProviders = array_keys(array_filter($envKeys));
           المقاس المستهدف: 1280×720 (16:9) • يعتمد على gemini-3.1-flash-image-preview
         </div>
       </form>
-
-      <?php if (!empty($lesson['infographic_url'])): ?>
-      <div style="margin-top:1rem;text-align:center;">
-        <img src="<?= htmlspecialchars($lesson['infographic_url']) ?>"
-             alt="الإنفوجرافيك الحالي"
-             style="max-width:100%;border-radius:var(--radius-sm);border:2px solid var(--border);cursor:pointer;"
-             onclick="window.open(this.src,'_blank')">
-        <div style="margin-top:.5rem;">
-          <a href="<?= htmlspecialchars($lesson['infographic_url']) ?>" target="_blank" class="btn btn-sm btn-primary">
-            <i class="fas fa-external-link-alt"></i> فتح في تبويب جديد
-          </a>
-        </div>
-      </div>
-      <?php endif; ?>
     </div>
 
   </div>
