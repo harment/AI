@@ -1304,14 +1304,16 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
         . "Professional educational design that helps students understand the lesson from a single image.";
 
     // Flux Kontext API – text-to-image endpoint
-    $url = 'https://api.fluxapi.ai/v1/flux-kontext-pro';
+    $url = 'https://api.fluxapi.ai/api/v1/flux/kontext/generate';
 
     $payload = json_encode([
-        'prompt'        => $prompt,
-        'aspect_ratio'  => '16:9',
-        'output_format' => 'png',
-        'width'         => 1280,
-        'height'        => 720,
+        'prompt'            => $prompt,
+        'model'             => 'flux-kontext-pro',
+        'aspectRatio'       => '16:9',
+        'outputFormat'      => 'png',
+        'enableTranslation' => true,
+        'promptUpsampling'  => false,
+        'safetyTolerance'   => 2,
     ], JSON_UNESCAPED_UNICODE);
 
     $ch = curl_init($url);
@@ -1358,13 +1360,14 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
     // ---- الحالة 1: task/polling (استجابة غير متزامنة) ----
     $taskId = $data['task_id'] ?? ($data['id'] ?? ($data['request_id'] ?? ''));
     if (!empty($taskId)) {
-        $pollingUrl = $data['polling_url'] ?? ('https://api.fluxapi.ai/v1/status/' . $taskId);
+        $pollingUrl = $data['polling_url'] ?? ('https://api.fluxapi.ai/api/v1/status/' . $taskId);
         return _pollAndSaveFluxImage($taskId, $pollingUrl, $fluxKey, $lessonId, $db, $uploadPath);
     }
 
     // ---- الحالة 2: رابط صورة مباشر ----
-    $imageUrl = $data['image_url']
-        ?? ($data['images'][0]['url'] ?? '')
+    $imageUrl = $data['imageUrl']
+        ?? ($data['image_url'] ?? '')
+        ?: ($data['images'][0]['url'] ?? '')
         ?: ($data['result']['url'] ?? ($data['url'] ?? ''));
     if (!empty($imageUrl)) {
         return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
@@ -1413,8 +1416,9 @@ function _pollAndSaveFluxImage(string $taskId, string $pollingUrl, string $apiKe
         $status = $pollData['status'] ?? ($pollData['state'] ?? '');
 
         if (in_array($status, ['completed', 'succeeded', 'done', ''])) {
-            $imageUrl = $pollData['image_url']
-                ?? ($pollData['images'][0]['url'] ?? '')
+            $imageUrl = $pollData['imageUrl']
+                ?? ($pollData['image_url'] ?? '')
+                ?: ($pollData['images'][0]['url'] ?? '')
                 ?: ($pollData['result']['url'] ?? ($pollData['url'] ?? ''));
 
             if (!empty($imageUrl)) {
