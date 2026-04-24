@@ -20,7 +20,6 @@ $envKeys = [
     'gamma'       => defined('GAMMA_API_KEY') ? GAMMA_API_KEY : '',
     'elevenlabs'  => defined('ELEVENLABS_API_KEY') ? ELEVENLABS_API_KEY : '',
     'heygen'      => defined('HEYGEN_API_KEY') ? HEYGEN_API_KEY : '',
-	'flux'        => defined('FLUX_API_KEY') ? FLUX_API_KEY : '',
 ];
 
 // ========== AJAX: فحص حالة الفيديو ==========
@@ -552,9 +551,10 @@ PROMPT;
                 }
             }
         }
-        // خيار ب: توليد إنفوجرافيك عبر Flux AI
+        // خيار ب: توليد إنفوجرافيك عبر Gemini من ملف PDF
         elseif (!empty($_POST['generate_infographic_from_pdf'])) {
             $pdfContent = '';
+            $customPrompt = trim($_POST['infographic_custom_prompt'] ?? '');
 
             if (!empty($lesson['pdf_url'])) {
                 $pdfPath    = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
@@ -565,8 +565,8 @@ PROMPT;
                 $msg     = 'لم يتم العثور على ملف PDF للدرس. يرجى رفع PDF أولاً.';
                 $msgType = 'warning';
             } else {
-                $fluxKey = $submittedKey ?: ($envKeys['flux'] ?? '');
-                $result  = generateInfographicWithFlux($lesson['name'], $pdfContent, $fluxKey, $lessonId, $db);
+                $geminiKey = $submittedKey ?: ($envKeys['gemini'] ?? '');
+                $result  = generateInfographicWithGemini($lesson['name'], $pdfContent, $geminiKey, $customPrompt, $lessonId, $db);
 
                 if ($result['success']) {
                     $msg = 'تم توليد الإنفوجرافيك بنجاح! <a href="' . htmlspecialchars($result['infographic_url']) . '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-image"></i> عرض الإنفوجرافيك</a>';
@@ -1472,13 +1472,15 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     return ['success' => false, 'error' => 'مزود غير معروف'];
 }
 
-// ========== FLUX INFOGRAPHIC HELPERS ==========
+// ========== GEMINI INFOGRAPHIC HELPERS ==========
 
-function generateInfographicWithFlux(string $lessonName, string $content, string $apiKey, int $lessonId, $db): array {
-    $fluxKey = !empty($apiKey) ? $apiKey : (defined('FLUX_API_KEY') ? FLUX_API_KEY : '');
-
-    if (empty($fluxKey)) {
-        return ['success' => false, 'error' => 'مفتاح Flux API مطلوب. يرجى إضافة FLUX_API_KEY في إعدادات البيئة أو إدخاله يدوياً.'];
+function generateInfographicWithGemini(string $lessonName, string $content, string $apiKey, string $customPrompt, int $lessonId, $db): array {
+    $geminiKey = trim($apiKey);
+    if (empty($geminiKey) && defined('GEMINI_API_KEY')) {
+        $geminiKey = trim((string)GEMINI_API_KEY);
+    }
+    if (empty($geminiKey)) {
+        return ['success' => false, 'error' => 'مفتاح Gemini API مطلوب. يرجى إضافة GEMINI_API_KEY في إعدادات البيئة أو إدخاله يدوياً.'];
     }
 
     $uploadPath = UPLOAD_DIR . 'infografic/';
@@ -1486,172 +1488,107 @@ function generateInfographicWithFlux(string $lessonName, string $content, string
         mkdir($uploadPath, 0755, true);
     }
 
-    $truncated = mb_substr($content, 0, 2000); // limit prompt size
+    $truncated = mb_substr($content, 0, 2200);
+    $customPrompt = mb_substr($customPrompt, 0, 600);
 
-    $prompt = "Educational Arabic infographic for the lesson «{$lessonName}». "
-        . "Create a clear visual tree/hierarchical diagram showing: "
-        . "main lesson title, key types with Arabic examples, sub-categories, patterns. "
-        . "Use comfortable colors (green, gold, white background), large clear Arabic font, "
-        . "landscape 1280x720 format. "
-        . "Content: {$truncated}. "
-        . "Professional educational design that helps students understand the lesson from a single image.";
+    $prompt = "صمّم إنفوجرافيك تعليمي باللغة العربية عن الدرس «{$lessonName}».\n"
+        . "- تنسيق أفقي بنسبة 16:9 (1280x720).\n"
+        . "- أسلوب واضح واحترافي مناسب للطلاب.\n"
+        . "- عناوين عربية كبيرة، تسلسل هرمي بصري، وأسهم/صناديق توضيحية.\n"
+        . "- لا تضف أي نص بلغة غير العربية داخل الصورة.\n"
+        . "- أخرج النتيجة كصورة نهائية واحدة عالية الوضوح.\n"
+        . "محتوى الدرس:\n{$truncated}\n";
 
-    // Flux Kontext API – text-to-image endpoint
-    $url = 'https://api.fluxapi.ai/api/v1/flux/kontext/generate';
-
-    $payload = json_encode([
-        'prompt'            => $prompt,
-        'model'             => 'flux-kontext-pro',
-        'aspectRatio'       => '16:9',
-        'outputFormat'      => 'png',
-        'enableTranslation' => true,
-        'promptUpsampling'  => false,
-        'safetyTolerance'   => 2,
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_HTTPHEADER     => [
-            'Authorization: Bearer ' . $fluxKey,
-            'Content-Type: application/json',
-        ],
-        CURLOPT_TIMEOUT => 120,
-    ]);
-
-    $response  = curl_exec($ch);
-    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($response === false || !empty($curlError)) {
-        return ['success' => false, 'error' => 'فشل الاتصال بـ Flux API: ' . $curlError];
+    if ($customPrompt !== '') {
+        $prompt .= "\nتخصيصات إضافية من الأستاذ (ألوان/أشكال/أسلوب):\n{$customPrompt}\n";
     }
 
-    if ($httpCode !== 200 && $httpCode !== 201 && $httpCode !== 202) {
-        $errorData = @json_decode($response, true);
-        // Build a useful message: prefer structured API error, fall back to raw body
-        $errorMsg = $errorData['message']
-            ?? ($errorData['error']['message'] ?? ($errorData['error'] ?? null));
-        if (is_array($errorMsg)) {
-            $errorMsg = json_encode($errorMsg, JSON_UNESCAPED_UNICODE);
-        }
-        if (empty($errorMsg)) {
-            // No structured error – show raw response so the developer can diagnose
-            $errorMsg = !empty($response) ? mb_substr($response, 0, 300) : 'لا يوجد محتوى في الاستجابة';
-        }
-        return ['success' => false, 'error' => 'خطأ من Flux API (HTTP ' . $httpCode . '): ' . (string)$errorMsg];
-    }
+    $models = [
+        'gemini-3.1-nano-banana-2',
+        'gemini-3.1',
+        'gemini-2.5-flash-image-preview',
+        'gemini-2.0-flash-preview-image-generation',
+    ];
 
-    $data = @json_decode($response, true);
-    if ($data === null) {
-        return ['success' => false, 'error' => 'فشل تحليل استجابة Flux API.'];
-    }
+    $lastError = 'تعذر توليد صورة الإنفوجرافيك عبر Gemini.';
+    foreach ($models as $model) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($geminiKey);
+        $payload = json_encode([
+            'contents' => [[
+                'parts' => [[
+                    'text' => $prompt,
+                ]]
+            ]],
+            'generationConfig' => [
+                'temperature' => 0.25,
+                'responseModalities' => ['IMAGE', 'TEXT'],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
 
-    // ---- الحالة 1: task/polling (استجابة غير متزامنة) ----
-    $taskId = $data['task_id'] ?? ($data['id'] ?? ($data['request_id'] ?? ''));
-    if (!empty($taskId)) {
-        $pollingUrl = $data['polling_url'] ?? ('https://api.fluxapi.ai/api/v1/status/' . $taskId);
-        return _pollAndSaveFluxImage($taskId, $pollingUrl, $fluxKey, $lessonId, $db, $uploadPath);
-    }
-
-    // ---- الحالة 2: رابط صورة مباشر ----
-    $imageUrl = $data['imageUrl']
-        ?? ($data['image_url'] ?? '')
-        ?: ($data['images'][0]['url'] ?? '')
-        ?: ($data['result']['url'] ?? ($data['url'] ?? ''));
-    if (!empty($imageUrl)) {
-        return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
-    }
-
-    // ---- الحالة 3: صورة base64 ----
-    $base64 = $data['image']
-        ?? ($data['images'][0]['b64_json'] ?? '')
-        ?: ($data['result']['base64'] ?? '');
-    if (!empty($base64)) {
-        return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
-    }
-
-    return ['success' => false, 'error' => 'لم تُعد Flux API أي صورة. يرجى المحاولة مرة أخرى.'];
-}
-
-function _pollAndSaveFluxImage(string $taskId, string $pollingUrl, string $apiKey, int $lessonId, $db, string $uploadPath): array {
-    $maxAttempts   = 20; // 20 attempts × 6 s = 120 s max wait
-    $pollIntervalS = 6;  // seconds between each status check
-
-    for ($i = 0; $i < $maxAttempts; $i++) {
-        sleep($pollIntervalS);
-
-        $ch = curl_init($pollingUrl);
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Authorization: Bearer ' . $apiKey,
-                'Content-Type: application/json',
-            ],
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => 120,
         ]);
-        $pollResp = curl_exec($ch);
-        $pollCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $resp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
-        if ($pollCode !== 200 || empty($pollResp)) {
+        if ($resp === false || !empty($curlError)) {
+            $lastError = 'فشل الاتصال بـ Gemini API: ' . $curlError;
             continue;
         }
 
-        $pollData = @json_decode($pollResp, true);
-        if (!is_array($pollData)) {
+        $data = @json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? mb_substr((string)$resp, 0, 220);
+            $lastError = "خطأ من Gemini ({$model}) HTTP {$httpCode}: " . (string)$apiErr;
             continue;
         }
 
-        $status = $pollData['status'] ?? ($pollData['state'] ?? '');
-
-        if (in_array($status, ['completed', 'succeeded', 'done', ''])) {
-            $imageUrl = $pollData['imageUrl']
-                ?? ($pollData['image_url'] ?? '')
-                ?: ($pollData['images'][0]['url'] ?? '')
-                ?: ($pollData['result']['url'] ?? ($pollData['url'] ?? ''));
-
-            if (!empty($imageUrl)) {
-                return _downloadAndSaveFluxImage($imageUrl, $lessonId, $db, $uploadPath);
-            }
-
-            $base64 = $pollData['image']
-                ?? ($pollData['images'][0]['b64_json'] ?? '')
-                ?: ($pollData['result']['base64'] ?? '');
-            if (!empty($base64)) {
-                return _saveBase64FluxImage($base64, $lessonId, $db, $uploadPath);
-            }
-        } elseif (in_array($status, ['failed', 'error', 'cancelled'])) {
-            $errMsg = $pollData['error'] ?? ($pollData['message'] ?? 'فشل توليد الصورة.');
-            return ['success' => false, 'error' => (string)$errMsg];
+        $base64 = _extractGeminiImageBase64($data);
+        if (!empty($base64)) {
+            return _saveBase64GeneratedImage($base64, $lessonId, $db, $uploadPath);
         }
-        // processing – استمر في الانتظار
+
+        $textFallback = '';
+        if (isset($data['candidates'][0]['content']['parts']) && is_array($data['candidates'][0]['content']['parts'])) {
+            foreach ($data['candidates'][0]['content']['parts'] as $part) {
+                if (!empty($part['text'])) {
+                    $textFallback .= $part['text'] . ' ';
+                }
+            }
+        }
+        $lastError = 'لم يُرجع النموذج صورة فعلية. ' . trim(mb_substr($textFallback, 0, 220));
     }
 
-    return ['success' => false, 'error' => 'انتهت مهلة الانتظار. يرجى المحاولة مرة أخرى.'];
+    return ['success' => false, 'error' => $lastError];
 }
-function _downloadAndSaveFluxImage(string $imageUrl, int $lessonId, $db, string $uploadPath): array {
-    $ch = curl_init($imageUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 60,
-    ]);
-    $imageContent = curl_exec($ch);
-    $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
 
-    if (!$imageContent || $httpCode !== 200) {
-        return ['success' => false, 'error' => 'فشل تحميل الصورة من الرابط المُعاد (HTTP ' . $httpCode . ').'];
+function _extractGeminiImageBase64(array $data): string {
+    $candidates = $data['candidates'] ?? [];
+    if (!is_array($candidates)) {
+        return '';
     }
-
-    return _writeFluxImageToDisk($imageContent, $lessonId, $db, $uploadPath);
+    foreach ($candidates as $candidate) {
+        $parts = $candidate['content']['parts'] ?? [];
+        if (!is_array($parts)) {
+            continue;
+        }
+        foreach ($parts as $part) {
+            if (!empty($part['inlineData']['data']) && is_string($part['inlineData']['data'])) {
+                return trim($part['inlineData']['data']);
+            }
+        }
+    }
+    return '';
 }
 
-function _saveBase64FluxImage(string $base64, int $lessonId, $db, string $uploadPath): array {
+function _saveBase64GeneratedImage(string $base64, int $lessonId, $db, string $uploadPath): array {
     if (str_contains($base64, ',')) {
         $base64 = explode(',', $base64, 2)[1];
     }
@@ -1659,10 +1596,10 @@ function _saveBase64FluxImage(string $base64, int $lessonId, $db, string $upload
     if ($imageContent === false) {
         return ['success' => false, 'error' => 'فشل فك ترميز الصورة (base64).'];
     }
-    return _writeFluxImageToDisk($imageContent, $lessonId, $db, $uploadPath);
+    return _writeGeneratedImageToDisk($imageContent, $lessonId, $db, $uploadPath);
 }
 
-function _writeFluxImageToDisk(string $imageContent, int $lessonId, $db, string $uploadPath): array {
+function _writeGeneratedImageToDisk(string $imageContent, int $lessonId, $db, string $uploadPath): array {
     $safeFileName = 'infographic_lesson_' . $lessonId . '_' . time() . '.png';
     $filePath     = $uploadPath . $safeFileName;
 
@@ -1758,8 +1695,8 @@ $configuredProviders = array_keys(array_filter($envKeys));
           </option>
         </optgroup>
 		<optgroup label="توليد المخطط البصري">
-          <option value="flux" <?= in_array('flux', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-            Flux Kontext (إنفوجرافيك) <?= in_array('flux', $configuredProviders) ? '✓' : '' ?>
+          <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+            Gemini 3.1 + Nano Banana 2 (إنفوجرافيك) <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
           </option>
         </optgroup>
       </select>
@@ -1960,7 +1897,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
     <!-- Infographic -->
     <div class="card">
       <div class="card-header"><div class="card-title"><i class="fas fa-project-diagram" style="color:#8E24AA;"></i> المخطط البصري (Infographic)</div></div>
-      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">رفع صورة | توليد إنفوجرافيك تعليمي من PDF (Flux AI)</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">رفع صورة | توليد إنفوجرافيك تعليمي من PDF (Gemini)</p>
 
       <form method="POST" enctype="multipart/form-data" id="infographicForm">
         <input type="hidden" name="gen_type" value="infographic">
@@ -1972,6 +1909,11 @@ $configuredProviders = array_keys(array_filter($envKeys));
           <input type="file" name="infographic_file" class="form-control" accept=".jpg,.jpeg,.png,.webp">
         </div>
 
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-pen-nib"></i> تخصيصات إضافية للبرومبت (اختياري)</label>
+          <textarea name="infographic_custom_prompt" class="form-control" rows="3" placeholder="مثال: استخدم ألوانًا هادئة (أخضر/ذهبي)، صناديق مستديرة، وأيقونات مبسطة."></textarea>
+        </div>
+
         <button type="submit" class="btn btn-block" style="background:#8E24AA;color:#fff;" onclick="injectFormVars(this.form)">
           <i class="fas fa-save"></i> حفظ الصورة المرفوعة
         </button>
@@ -1979,12 +1921,12 @@ $configuredProviders = array_keys(array_filter($envKeys));
         <button type="submit" name="generate_infographic_from_pdf" value="1"
                 class="btn btn-outline btn-block" style="margin-top:.5rem;"
                 onclick="injectFormVars(this.form)">
-          <i class="fas fa-magic"></i> توليد من PDF الدرس (Flux AI)
+          <i class="fas fa-magic"></i> توليد من PDF الدرس (Gemini)
         </button>
 
         <div style="margin-top:.75rem;padding:.5rem;background:#f8f9fa;border-radius:4px;font-size:.75rem;color:#6c757d;text-align:center;">
           <i class="fas fa-info-circle"></i>
-          المقاس المستهدف: 1280×720 بكسل • يتطلب مفتاح Flux API
+          المقاس المستهدف: 1280×720 (16:9) • يعتمد على Gemini 3.1 + Nano Banana 2
         </div>
       </form>
 

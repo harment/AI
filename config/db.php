@@ -76,7 +76,6 @@ if (!defined('ANTHROPIC_API_KEY'))  define('ANTHROPIC_API_KEY',  (string)dhakali
 if (!defined('GAMMA_API_KEY'))      define('GAMMA_API_KEY',      (string)dhakali_env('GAMMA_API_KEY', ''));
 if (!defined('ELEVENLABS_API_KEY')) define('ELEVENLABS_API_KEY', (string)dhakali_env('ELEVENLABS_API_KEY', ''));
 if (!defined('HEYGEN_API_KEY'))     define('HEYGEN_API_KEY',     (string)dhakali_env('HEYGEN_API_KEY', ''));
-if (!defined('FLUX_API_KEY'))       define('FLUX_API_KEY',       (string)dhakali_env('FLUX_API_KEY', ''));
 
 //if (!defined('HEYGEN_AVATAR_ID'))     define('HEYGEN_AVATAR_ID',     (string)dhakali_env('HEYGEN_AVATAR_ID', ''));
 //if (!defined('HEYGEN_VOICE_ID'))     define('HEYGEN_VOICE_ID',     (string)dhakali_env('HEYGEN_VOICE_ID', ''));
