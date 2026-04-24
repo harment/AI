@@ -1504,83 +1504,64 @@ function generateInfographicWithGemini(string $lessonName, string $content, stri
     }
 
     $models = [
-        'gemini-3.1-nano-banana-2',
-        'gemini-3.1',
+        'gemini-3.1-flash-image-preview',
         'gemini-2.5-flash-image-preview',
-        'gemini-2.0-flash-preview-image-generation',
     ];
 
     $lastError = 'تعذر توليد صورة الإنفوجرافيك عبر Gemini.';
     foreach ($models as $model) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($geminiKey);
-        $requestVariants = [
-            [
-                'contents' => [[
-                    'parts' => [[
-                        'text' => $prompt,
-                    ]]
-                ]],
-                'generationConfig' => [
-                    'temperature' => 0.25,
-                    'responseModalities' => ['IMAGE', 'TEXT'],
-                ],
-            ],
-            [
-                'contents' => [[
-                    'parts' => [[
-                        'text' => $prompt,
-                    ]]
-                ]],
-                'generationConfig' => [
-                    'temperature' => 0.25,
-                ],
-                'responseModalities' => ['IMAGE', 'TEXT'],
+        $requestBody = [
+            'contents' => [[
+                'parts' => [[
+                    'text' => $prompt,
+                ]]
+            ]],
+            'generationConfig' => [
+                'temperature' => 0.25,
             ],
         ];
+        $payload = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
 
-        foreach ($requestVariants as $requestBody) {
-            $payload = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => 120,
+        ]);
+        $resp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
 
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $payload,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                CURLOPT_TIMEOUT => 120,
-            ]);
-            $resp = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError = curl_error($ch);
-            curl_close($ch);
+        if ($resp === false || !empty($curlError)) {
+            $lastError = 'فشل الاتصال بـ Gemini API: ' . $curlError;
+            continue;
+        }
 
-            if ($resp === false || !empty($curlError)) {
-                $lastError = 'فشل الاتصال بـ Gemini API: ' . $curlError;
-                continue;
-            }
+        $data = @json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? mb_substr((string)$resp, 0, 220);
+            $lastError = "خطأ من Gemini ({$model}) HTTP {$httpCode}: " . (string)$apiErr;
+            continue;
+        }
 
-            $data = @json_decode($resp, true);
-            if ($httpCode !== 200) {
-                $apiErr = $data['error']['message'] ?? mb_substr((string)$resp, 0, 220);
-                $lastError = "خطأ من Gemini ({$model}) HTTP {$httpCode}: " . (string)$apiErr;
-                continue;
-            }
+        $base64 = _extractGeminiImageBase64($data);
+        if (!empty($base64)) {
+            return _saveBase64GeneratedImage($base64, $lessonId, $db, $uploadPath);
+        }
 
-            $base64 = _extractGeminiImageBase64($data);
-            if (!empty($base64)) {
-                return _saveBase64GeneratedImage($base64, $lessonId, $db, $uploadPath);
-            }
-
-            $textFallback = '';
-            if (isset($data['candidates'][0]['content']['parts']) && is_array($data['candidates'][0]['content']['parts'])) {
-                foreach ($data['candidates'][0]['content']['parts'] as $part) {
-                    if (!empty($part['text'])) {
-                        $textFallback .= $part['text'] . ' ';
-                    }
+        $textFallback = '';
+        if (isset($data['candidates'][0]['content']['parts']) && is_array($data['candidates'][0]['content']['parts'])) {
+            foreach ($data['candidates'][0]['content']['parts'] as $part) {
+                if (!empty($part['text'])) {
+                    $textFallback .= $part['text'] . ' ';
                 }
             }
-            $lastError = 'لم يُرجع النموذج صورة فعلية. ' . trim(mb_substr($textFallback, 0, 220));
         }
+        $lastError = 'لم يُرجع النموذج صورة فعلية. ' . trim(mb_substr($textFallback, 0, 220));
     }
 
     return ['success' => false, 'error' => $lastError];
