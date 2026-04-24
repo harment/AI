@@ -1697,7 +1697,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
         </optgroup>
 		<optgroup label="توليد المخطط البصري">
           <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
-            Gemini 3.1 + Nano Banana 2 (إنفوجرافيك) <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+            Gemini 3.1 Flash Image Preview (Nano Banana 2) <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
           </option>
         </optgroup>
       </select>
@@ -1927,7 +1927,7 @@ $configuredProviders = array_keys(array_filter($envKeys));
 
         <div style="margin-top:.75rem;padding:.5rem;background:#f8f9fa;border-radius:4px;font-size:.75rem;color:#6c757d;text-align:center;">
           <i class="fas fa-info-circle"></i>
-          المقاس المستهدف: 1280×720 (16:9) • يعتمد على Gemini 3.1 + Nano Banana 2
+          المقاس المستهدف: 1280×720 (16:9) • يعتمد على gemini-3.1-flash-image-preview
         </div>
       </form>
 
