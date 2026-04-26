@@ -14,6 +14,42 @@ if (!$lesson) { header('Location: /teacher/lessons.php'); exit; }
 $msg = ''; $msgType = 'success';
 $action = $_POST['action'] ?? '';
 
+// Export questions to Excel/CSV
+if (isset($_GET['export']) && $_GET['export'] === 'excel') {
+    $exportQuestions = $db->prepare("SELECT * FROM questions WHERE lesson_id=? ORDER BY sort_order, id");
+    $exportQuestions->execute([$lessonId]);
+    $exportQuestions = $exportQuestions->fetchAll();
+
+    $correctLabels = ['a' => 'أ', 'b' => 'ب', 'c' => 'ج', 'd' => 'د'];
+    header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+    header('Content-Disposition: attachment; filename="questions_' . $lessonId . '_' . date('Ymd') . '.csv"');
+    header('Pragma: no-cache');
+    $bom = "\xEF\xBB\xBF";
+    echo $bom;
+    echo "رقم السؤال,نص السؤال,الخيار أ,الخيار ب,الخيار ج,الخيار د,الإجابة الصحيحة,تغذية راجعة (صحيح),تغذية راجعة (خطأ)\n";
+    foreach ($exportQuestions as $i => $eq) {
+        $row = [
+            $i + 1,
+            $eq['question_text'],
+            $eq['option_a'],
+            $eq['option_b'],
+            $eq['option_c'],
+            $eq['option_d'],
+            $correctLabels[$eq['correct_option']] ?? $eq['correct_option'],
+            $eq['feedback_correct'] ?? '',
+            $eq['feedback_wrong'] ?? ''
+        ];
+        echo implode(',', array_map(function($v) {
+            $v = (string)$v;
+            if (isset($v[0]) && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"])) {
+                $v = "'" . $v;
+            }
+            return '"' . str_replace('"', '""', $v) . '"';
+        }, $row)) . "\n";
+    }
+    exit;
+}
+
 // Add question
 if ($action === 'add') {
     $qtext   = trim($_POST['question_text'] ?? '');
@@ -66,8 +102,13 @@ $questions = $questions->fetchAll();
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
     <h2><i class="fas fa-question-circle"></i> أسئلة: <?= clean($lesson['name']) ?></h2>
-    <div style="display:flex;gap:.75rem;">
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
       <a href="/teacher/ai_generate.php?lesson_id=<?= $lessonId ?>&generate=questions" class="btn btn-accent btn-sm"><i class="fas fa-robot"></i> توليد بالذكاء</a>
+      <?php if (!empty($questions)): ?>
+      <a href="/teacher/question_analysis.php?lesson_id=<?= $lessonId ?>" class="btn btn-primary btn-sm"><i class="fas fa-brain"></i> تحليل الأسئلة</a>
+      <a href="/teacher/edit_questions.php?lesson_id=<?= $lessonId ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> تعديل</a>
+      <a href="?lesson_id=<?= $lessonId ?>&export=excel" class="btn btn-primary btn-sm"><i class="fas fa-file-excel"></i> تصدير Excel</a>
+      <?php endif; ?>
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('addModal').style.display='flex'"><i class="fas fa-plus"></i> سؤال جديد</button>
     </div>
   </div>
