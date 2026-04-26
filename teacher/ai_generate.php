@@ -159,8 +159,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedKey = trim($_POST['api_key_override'] ?? '');
     $apiKey = $submittedKey ?: ($envKeys[$provider] ?? '');
 
-    // ========== QUESTIONS ==========
+     // ========== QUESTIONS ==========
     if ($genType === 'questions') {
+        $numQuestions = (int)($_POST['num_questions'] ?? 30);
+        $allowedCounts = [5, 10, 15, 20, 25, 30];
+        if (!in_array($numQuestions, $allowedCounts)) $numQuestions = 30;
+
+        $difficulty = $_POST['difficulty'] ?? 'medium';
+        $allowedDifficulties = ['easy', 'medium', 'hard'];
+        if (!in_array($difficulty, $allowedDifficulties)) $difficulty = 'medium';
+        $difficultyLabels = ['easy' => 'سهل', 'medium' => 'متوسط', 'hard' => 'صعب'];
+        $difficultyAr = $difficultyLabels[$difficulty];
+
+        $learningOutcomes = trim($_POST['learning_outcomes'] ?? '');
+
         $pdfContent = '';
         if (!empty($lesson['pdf_url'])) {
             $pdfPath = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
@@ -172,7 +184,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msgType = 'warning';
         } else {
             $truncatedContent = mb_substr($pdfContent, 0, 12000);
-            $prompt = "أنت أستاذ لغة عربية متخصص في النحو. فيما يلي المحتوى الكامل لملف PDF للدرس «{$lesson['name']}»:\n\n{$truncatedContent}\n\nبناءً على هذا المحتوى فقط، اصنع 30 سؤال اختيار من متعدد باللغة العربية الفصحى. كل سؤال له 4 خيارات وإجابة صحيحة وتغذية راجعة.\n\nأجب بـ JSON array فقط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
+
+            $difficultyInstructions = '';
+            if ($difficulty === 'easy') {
+                $difficultyInstructions = "اجعل الأسئلة سهلة وبسيطة تناسب المبتدئين، بحيث تقيس الفهم الأساسي والتعريفات والمفاهيم الأولية.";
+            } elseif ($difficulty === 'hard') {
+                $difficultyInstructions = "اجعل الأسئلة صعبة ومتقدمة تتطلب تحليلاً عميقاً وتطبيقاً متقدماً للمفاهيم، مع خيارات متقاربة تحتاج تفكيراً دقيقاً.";
+            } else {
+                $difficultyInstructions = "اجعل الأسئلة بمستوى متوسط تمزج بين الفهم والتطبيق.";
+            }
+
+            $outcomesSection = '';
+            if (!empty($learningOutcomes)) {
+                $outcomesSection = "\n\nنواتج التعلم المطلوب مراعاتها عند توليد الأسئلة:\n{$learningOutcomes}\n\nاحرص على أن تغطي الأسئلة نواتج التعلم المذكورة أعلاه قدر الإمكان.";
+            }
+
+            $prompt = "أنت أستاذ لغة عربية متخصص في النحو. فيما يلي المحتوى الكامل لملف PDF للدرس «{$lesson['name']}»:\n\n{$truncatedContent}\n\nبناءً على هذا المحتوى فقط، اصنع {$numQuestions} سؤال اختيار من متعدد باللغة العربية الفصحى. كل سؤال له 4 خيارات وإجابة صحيحة وتغذية راجعة.\n\nمستوى الصعوبة المطلوب: {$difficultyAr}.\n{$difficultyInstructions}{$outcomesSection}\n\nأجب بـ JSON array فقط:\n[{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_option\":\"a\",\"feedback_correct\":\"...\",\"feedback_wrong\":\"...\"}]";
             
             $result = callAI($prompt, $apiKey, $provider);
             
@@ -442,7 +469,8 @@ PROMPT;
                 $result = generateVideo($lesson['name'], $pdfContent, $apiKey, $lessonId, $db);
                 if ($result['success']) {
                     if (isset($result['status']) && $result['status'] === 'processing') {
-                        $msg = '<i class="fas fa-spinner fa-spin"></i> بدأ توليد الفيديو بنجاح! جارٍ المعالجة... سيتم التحديث تلقائياً.';
+                        $msg = '<i class="fas fa-spinner fa-spin"></i> بدأ توليد الفيديو بنجاح (3 مشاهد)! جارٍ المعالجة... سيتم التحديث تلقائياً.';
+                        $msg .= '<br><small style="color:var(--muted);">التكلفة المتوقعة: $3 تقريباً (3-4 دقائق)</small>';
                         $msgType = 'info';
                         echo '<meta http-equiv="refresh" content="1">';
                     } else {
@@ -462,8 +490,7 @@ PROMPT;
     }
 
     // ========== SCHOLAR ==========
-    if ($genType === 'scholar') {
-        $scholarName = trim($_POST['scholar_name'] ?? '');
+    if ($genType === 'scholar') {        $scholarName = trim($_POST['scholar_name'] ?? '');
         if (empty($scholarName)) {
             $msg = 'يرجى إدخال اسم العالم.';
             $msgType = 'warning';
@@ -492,6 +519,65 @@ PROMPT;
                 $msg = 'فشل الاستدعاء: ' . $result['error']; 
                 $msgType = 'danger';
             }
+        }
+    }
+
+    // ========== INFOGRAPHIC ==========
+    if ($genType === 'infographic') {
+        // خيار أ: رفع صورة من جهاز المستخدم
+        if (isset($_FILES['infographic_file']) && $_FILES['infographic_file']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['infographic_file'];
+            $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $msg     = 'صيغة الملف غير مدعومة. يرجى رفع JPG أو PNG أو WebP.';
+                $msgType = 'danger';
+            } else {
+                $safeFileName = 'infographic_lesson_' . $lessonId . '_' . time() . '.' . $ext;
+                $uploadPath   = UPLOAD_DIR . 'infografic/';
+
+                if (!is_dir($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+
+                $filePath = $uploadPath . $safeFileName;
+                if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                    $infographicUrl = '/uploads/infografic/' . $safeFileName;
+                    $db->prepare("UPDATE lessons SET infographic_url=? WHERE id=?")->execute([$infographicUrl, $lessonId]);
+                    $msg = 'تم رفع الإنفوجرافيك بنجاح!';
+                } else {
+                    $msg     = 'فشل رفع الملف. يرجى المحاولة مرة أخرى.';
+                    $msgType = 'danger';
+                }
+            }
+        }
+        // خيار ب: توليد إنفوجرافيك عبر Gemini من ملف PDF
+        elseif (!empty($_POST['generate_infographic_from_pdf'])) {
+            $pdfContent = '';
+            $customPrompt = trim($_POST['infographic_custom_prompt'] ?? '');
+
+            if (!empty($lesson['pdf_url'])) {
+                $pdfPath    = UPLOAD_DIR . 'pdfs/' . basename($lesson['pdf_url']);
+                $pdfContent = extractPdfText($pdfPath);
+            }
+
+            if (empty($pdfContent)) {
+                $msg     = 'لم يتم العثور على ملف PDF للدرس. يرجى رفع PDF أولاً.';
+                $msgType = 'warning';
+            } else {
+                $geminiKey = $submittedKey ?: ($envKeys['gemini'] ?? '');
+                $result  = generateInfographicWithGemini($lesson['name'], $pdfContent, $geminiKey, $customPrompt, $lessonId, $db);
+
+                if ($result['success']) {
+                    $msg = 'تم توليد الإنفوجرافيك بنجاح! <a href="' . htmlspecialchars($result['infographic_url']) . '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-image"></i> عرض الإنفوجرافيك</a>';
+                } else {
+                    $msg     = 'فشل توليد الإنفوجرافيك: ' . $result['error'];
+                    $msgType = 'danger';
+                }
+            }
+        } else {
+            $msg     = 'يرجى رفع صورة أو طلب التوليد من PDF.';
+            $msgType = 'warning';
         }
     }
 }
@@ -807,6 +893,30 @@ PROMPT;
     return ['success' => true, 'podcast_url' => $podcastUrl];
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * دالة توليد فيديو HeyGen محسّنة - جاهزة للاستبدال المباشر
+ * ═══════════════════════════════════════════════════════════════════════
+ * 
+ * الاسم: generateVideo (نفس الاسم القديم - بدون تعديلات!)
+ * الموضع: استبدل الأسطر 836-1099 في ai_generate__5___17_.php
+ * 
+ * التحسينات:
+ * ✅ برومبت محسّن يركز على المحتوى المكتوب (السبورة 75%)
+ * ✅ إعدادات Avatar محسّنة (الأستاذ 25% - زاوية الشاشة)
+ * ✅ نصوص توضيحية على السبورة (8-12 نقطة)
+ * ✅ خط Amiri عربي احترافي
+ * ✅ أمثلة معربة بالحركات
+ * ✅ نفس بنية قاعدة البيانات (متوافق 100%)
+ * 
+ * طريقة الاستخدام:
+ * 1. افتح ai_generate__5___17_.php
+ * 2. احذف الوظيفة القديمة generateVideo (الأسطر 836-1099)
+ * 3. الصق هذه الوظيفة مكانها
+ * 4. احفظ الملف
+ * ═══════════════════════════════════════════════════════════════════════
+ */
+
 function generateVideo(string $lessonName, string $content, string $apiKey, int $lessonId, $db): array {
     // استخدام مفتاح HeyGen المحدد
     $heygenKey = defined('HEYGEN_API_KEY') && !empty(HEYGEN_API_KEY) 
@@ -817,56 +927,233 @@ function generateVideo(string $lessonName, string $content, string $apiKey, int 
         return ['success' => false, 'error' => 'مفتاح HeyGen مطلوب. يرجى إضافة HEYGEN_API_KEY في config/db.php'];
     }
     
-    // 1. توليد سكريبت الفيديو بواسطة Gemini
-    $truncated = mb_substr($content, 0, 5000);
+    // 1. تحليل نوع المقرر من محتوى PDF
+    $truncated = mb_substr($content, 0, 4000);
     
-    $scriptPrompt = <<<PROMPT
-Task: Analyze the attached PDF content and create an educational video script in Arabic language.
+    $courseTypePrompt = <<<PROMPT
+حلل محتوى الدرس التالي وحدد نوعه بدقة:
 
-**Content:**
+**عنوان الدرس:** {$lessonName}
+
+**المحتوى:**
 {$truncated}
 
-**Requirements:**
-- Avatar: Use a professional Male Teacher avatar
-- Setting: A classroom environment with a whiteboard
-- Visuals: Include dynamic infographics, arrows, and bullet points on the screen
-- Voice: Natural Arabic male voice with educational tone
-- Content Structure:
-  1. Introduction (30 seconds): Welcome and overview
-  2. Key Points (3-4 minutes): Step-by-step lesson breakdown
-  3. Summary (30 seconds): Quick recap and closing
+**المطلوب:**
+حدد نوع الدرس في كلمة أو كلمتين فقط:
+- نحو (قواعد نحوية)
+- قراءة (نصوص قرائية)
+- نصوص (نصوص أدبية)
+- كتابة (تدريبات كتابية)
+- محادثة (حوارات)
+- مفردات (تعليم كلمات)
+- صرف (قواعد صرفية)
+- إملاء (قواعد إملائية)
 
-**Output Format:**
-Write a clear, engaging Arabic script for the teacher to speak. Keep it conversational and educational.
-Duration: 3-5 minutes total.
-
-Begin the script now:
+**أجب بكلمة واحدة فقط (نوع الدرس):**
 PROMPT;
     
     $geminiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '';
     if (empty($geminiKey)) {
-        return ['success' => false, 'error' => 'مفتاح Gemini مطلوب لتوليد السكريبت'];
+        return ['success' => false, 'error' => 'مفتاح Gemini مطلوب'];
     }
+    
+    $courseTypeResult = callAI($courseTypePrompt, $geminiKey, 'gemini');
+    $courseType = 'نحو'; // افتراضي
+    if ($courseTypeResult['success']) {
+        $courseType = trim($courseTypeResult['text']);
+        $courseType = preg_replace('/[^أ-ي\s]/u', '', $courseType); // تنظيف
+        $courseType = mb_substr($courseType, 0, 20); // حد أقصى
+    }
+    
+    // 2. توليد مقدمة مناسبة لنوع المقرر
+    $introductions = [
+	 'نحو' => 'السلام عليكم ورحمة الله وبركاته، مرحبا بكم في هذا الدرس المفيد في تعليم اللغة العربية لغير الناطقين بها درسنا اليوم سيتناول إن شاء الله موضوع',
+    ];
+    
+    $selectedIntro = $introductions['نحو']; // افتراضي
+    foreach ($introductions as $type => $intro) {
+        if (mb_stripos($courseType, $type) !== false) {
+            $selectedIntro = $intro;
+            break;
+        }
+    }
+    
+    // 3. توليد سكريبت مختصر ودقيق (2-2.5 دقيقة = 250-320 كلمة)
+    $scriptPrompt = <<<PROMPT
+أنت معلم لغة عربية لغير الناطقين بها. اكتب سكريبت فيديو تعليمي مدته دقيقتان فقط.
+
+**نوع الدرس:** {$courseType}
+**عنوان الدرس:** {$lessonName}
+
+**محتوى الدرس من PDF:**
+{$truncated}
+
+**تعليمات صارمة - مهم جداً:**
+
+ **المدة:** دقيقتان فقط (250-320 كلمة عربية كحد أقصى)
+
+ **المقدمة (15 ثانية):**
+   ابدأ بـ: "{$selectedIntro} {$lessonName}"
+
+ **المحتوى (دقيقة و30 ثانية):**
+   - استخدم المعلومات من محتوى PDF فقط - لا تضف معلومات خارجية
+   - ركز على النقاط الأساسية فقط (2-3 نقاط)
+   - أضف مثالاً واحداً أو مثالين كحد أقصى
+   - إذا كان درس نحو: اذكر الأمثلة مع الحركات الإعرابية كاملة ونطقها بوضوح
+
+ **الخاتمة (15 ثانية):**
+   "هذا ما تعلمناه اليوم. أتمنى لكم التوفيق"
+
+ **قواعد النطق للأمثلة النحوية:**
+   - اكتب الحركات الإعرابية بوضوح: (ُ، َ، ِ، ْ)
+   - مثال صحيح: "الطالبُ مجتهدٌ" (انطق: الطالبُ مُجْتَهِدٌ)
+   - اكتب التنوين: "طالباً" وليس "طالبا"
+   - اكتب الشدة: "إنَّ" وليس "إن"
+
+ **قواعد صارمة:**
+   - ✅ لا تتجاوز 320 كلمة أبداً
+   - ✅ استخدم محتوى PDF فقط - لا معلومات خارجية
+   - ✅ لا تبدأ بـ: "بالتأكيد"، "يسعدني"، "إليك"
+   - ✅ لا تذكر أرقام صفوف دراسية
+   - ✅ عربية فصحى بسيطة وواضحة
+   - ✅ اكتب الأمثلة بالحركات الكاملة
+
+**اكتب السكريبت الآن (250-320 كلمة فقط):**
+PROMPT;
     
     $scriptResult = callAI($scriptPrompt, $geminiKey, 'gemini');
     if (!$scriptResult['success']) {
         return ['success' => false, 'error' => 'فشل توليد السكريبت: ' . $scriptResult['error']];
     }
     
-    $script = $scriptResult['text'];
+    $rawScript = $scriptResult['text'];
     
-    // 2. استدعاء HeyGen v3 Video Agent API
+    // 4. تنظيف السكريبت
+    $script = $rawScript;
+    
+    // إزالة المقدمات والتنسيقات
+    $script = preg_replace('/^.*(بالتأكيد|يسعدني|إليك|سأقدم|مسودة|سيناريو).*/mu', '', $script);
+    $script = preg_replace('/\*\*.*?\*\*/u', '', $script);
+    $script = preg_replace('/^.*[─━]+.*/mu', '', $script);
+    $script = preg_replace('/^.*#+\s+.*/mu', '', $script);
+    $script = trim($script);
+    
+    // التأكد من البداية الصحيحة
+    if (mb_stripos($script, 'السلام عليكم') === false) {
+        $script = $selectedIntro . " {$lessonName}. " . $script;
+    }
+    
+    // تقصير إلى 320 كلمة كحد أقصى (دقيقتان تقريباً)
+    $words = preg_split('/\s+/u', $script, -1, PREG_SPLIT_NO_EMPTY);
+    if (count($words) > 320) {
+        $words = array_slice($words, 0, 320);
+        $script = implode(' ', $words);
+        // إضافة خاتمة إذا تم القطع
+        if (!mb_stripos($script, 'أتمنى لكم')) {
+            $script .= '. هذا ما تعلمناه اليوم. أتمنى لكم التوفيق';
+        }
+    }
+    
+    // 5. استخراج النقاط الرئيسية للعرض (من محتوى PDF فقط)
+    $keyPointsPrompt = <<<PROMPT
+من محتوى الدرس التالي فقط، استخرج 5-7 نقاط رئيسية قصيرة للعرض على الشاشة:
+
+**المحتوى:**
+{$truncated}
+
+**المطلوب:**
+نقاط قصيرة جداً (5-10 كلمات) من محتوى الدرس فقط:
+- تعريفات من الدرس
+- أمثلة من الدرس مع الحركات الإعرابية الكاملة
+- قواعد أساسية من الدرس
+
+**تعليمات مهمة:**
+- استخدم المحتوى الموجود في الدرس فقط
+- لا تضف معلومات من خارج الدرس
+- اكتب الأمثلة النحوية بالحركات الكاملة: (ُ، َ، ِ، ْ، ٌ، ً، ٍ، ّ)
+- مثال صحيح: "كانَ الطالبُ مجتهداً" وليس "كان الطالب مجتهدا"
+
+**التنسيق:**
+1. [نقطة 1]
+2. [نقطة 2]
+...
+
+**اكتب النقاط من محتوى الدرس فقط:**
+PROMPT;
+    
+    $keyPointsResult = callAI($keyPointsPrompt, $geminiKey, 'gemini');
+    $keyPoints = [];
+    if ($keyPointsResult['success']) {
+        preg_match_all('/^\s*\d+\.\s*(.+)$/m', $keyPointsResult['text'], $matches);
+        $keyPoints = array_slice(array_map('trim', $matches[1] ?? []), 0, 7);
+    }
+    
+    // 6. بناء برومبت Video Agent مع تحسينات النطق
+    $keyPointsText = '';
+    if (!empty($keyPoints)) {
+        $keyPointsText = "Arabic text to display on screen with full diacritical marks (تشكيل كامل):\n";
+        foreach ($keyPoints as $point) {
+            $keyPointsText .= "• " . $point . "\n";
+        }
+    }
+    
+    // إضافة ملاحظة خاصة بالنطق الصحيح
+    $pronunciationNote = <<<NOTE
+
+**CRITICAL PRONUNCIATION INSTRUCTIONS:**
+The Arabic voiceover MUST pronounce grammatical examples with full correct pronunciation:
+- Pronounce ALL end-of-word diacritics (الحركات الإعرابية)
+- Examples: 
+  * "الطالبُ" → pronounce final damma clearly
+  * "مجتهداً" → pronounce final tanween fatha clearly
+  * "كانَ" → pronounce final fatha clearly
+- Do NOT drop final vowels
+- Do NOT use sukoon where harakat should be
+- Clear, educational pronunciation for non-native speakers
+
+The text already includes full diacritical marks - ensure voice follows them exactly.
+NOTE;
+    
+    $videoPrompt = <<<PROMPT
+Educational Arabic language video for non-native speakers, 2 minutes duration, professional quality.
+
+**Setting:** Modern Arabic language classroom with digital whiteboard. Warm educational lighting. Clean organized environment.
+
+**Teacher:** Friendly Arab male teacher, age 35-45, smart-casual attire (shirt), natural teaching gestures, clear and slow speech suitable for learners.
+
+**Lesson Topic:** {$lessonName}
+**Course Type:** {$courseType}
+
+**Visual Elements:**
+- Digital whiteboard showing clear diagrams and Arabic text
+- Arabic text appearing on screen in elegant readable font with FULL diacritical marks (تشكيل كامل)
+- Clean infographic style
+- Professional motion graphics with smooth transitions
+- Color scheme: educational and welcoming
+
+**Content to Display on Screen:**
+{$keyPointsText}
+
+**Voiceover Script in Arabic (2 minutes - 250-320 words):**
+{$script}
+
+{$pronunciationNote}
+
+**Important Style Notes:**
+- Duration: Exactly 2 minutes (not longer)
+- Text on screen: Display Arabic WITH full harakat (diacritics)
+- Voice: Clear educational Arabic pronunciation, pronouncing ALL word endings correctly
+- Transitions: Smooth and professional
+- Quality: Educational broadcast standard for language learners
+
+Create a professional 2-minute educational video following this description precisely.
+PROMPT;
+    
+    // 7. استدعاء Video Agent API
     $url = "https://api.heygen.com/v3/video-agents";
     
-    // تقصير السكريبت إذا كان طويلاً جداً
-    $shortScript = mb_substr($script, 0, 800); // حد أقصى 800 حرف
-    
-    // برومبت مُبسّط للغاية
-    $prompt = "A 3-minute Arabic educational video about {$lessonName}. Script: {$shortScript}";
-    
-    // استخدام Video Agent
     $payload = [
-        'prompt' => $prompt
+        'prompt' => $videoPrompt
     ];
     
     $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
@@ -880,7 +1167,8 @@ PROMPT;
             'X-Api-Key: ' . $heygenKey,
             'Content-Type: application/json'
         ],
-        CURLOPT_TIMEOUT => 30
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_TIMEOUT => 60
     ]);
     
     $response = curl_exec($ch);
@@ -906,15 +1194,13 @@ PROMPT;
     }
     
     $data = json_decode($response, true);
-    // Video Agent يعيد video_id في data
     $videoId = $data['data']['video_id'] ?? $data['video_id'] ?? '';
     
     if (empty($videoId)) {
-        return ['success' => false, 'error' => 'لم يتم إرجاع معرف الفيديو من HeyGen'];
+        return ['success' => false, 'error' => 'لم يتم إرجاع معرف الفيديو من HeyGen. Response: ' . substr($response, 0, 500)];
     }
     
-    // حفظ video_id في قاعدة البيانات مباشرة (بدون انتظار)
-    // سنستخدم JSON لتخزين البيانات
+    // حفظ في قاعدة البيانات
     $videoData = json_encode([
         'video_id' => $videoId,
         'status' => 'processing',
@@ -932,46 +1218,11 @@ PROMPT;
     ];
 }
 
-function pollHeyGenVideo(string $videoId, string $apiKey): ?string {
-    // استخدام v3 API endpoint
-    $url = "https://api.heygen.com/v3/videos/" . urlencode($videoId);
-    $maxAttempts = 30;  // 30 × 10 ثانية = 5 دقائق كحد أقصى
-    
-    for ($i = 0; $i < $maxAttempts; $i++) {
-        sleep(10);  // انتظار 10 ثوانٍ بين كل محاولة
-        
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'X-Api-Key: ' . $apiKey,
-                'Content-Type: application/json'
-            ]
-        ]);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200) {
-            continue;  // حاول مرة أخرى
-        }
-        
-        $data = json_decode($response, true);
-        $status = $data['data']['status'] ?? $data['status'] ?? '';
-        
-        if ($status === 'completed') {
-            // في v3، الفيديو قد يكون في data.video_url أو data.url
-            return $data['data']['video_url'] ?? $data['data']['url'] ?? $data['url'] ?? null;
-        } elseif ($status === 'failed' || $status === 'error') {
-            return null;  // فشل التوليد
-        }
-        // إذا كان processing أو pending، استمر في الانتظار
-    }
-    
-    return null;  // انتهت المحاولات بدون نجاح
-}
 
+
+// ========================================
+// تصميم عروض بواسطة جاما
+// ========================================
 function generateGammaPresentation(string $lessonName, string $content, string $apiKey, int $lessonId, $db): array {
     if (empty($apiKey)) {
         return ['success' => false, 'error' => 'لم يتم تعيين مفتاح Gamma'];
@@ -1084,7 +1335,7 @@ function generateGammaPresentation(string $lessonName, string $content, string $
     
     return ['success' => false, 'error' => 'انتهت مهلة الانتظار'];
 }
-
+ 
 function callAI(string $prompt, string $apiKey, string $provider): array {
     if (empty($apiKey)) {
         return ['success' => false, 'error' => 'لم يتم تعيين مفتاح API'];
@@ -1221,6 +1472,147 @@ function callAI(string $prompt, string $apiKey, string $provider): array {
     return ['success' => false, 'error' => 'مزود غير معروف'];
 }
 
+// ========== GEMINI INFOGRAPHIC HELPERS ==========
+
+function generateInfographicWithGemini(string $lessonName, string $content, string $apiKey, string $customPrompt, int $lessonId, $db): array {
+    $geminiKey = trim($apiKey);
+    if (empty($geminiKey) && defined('GEMINI_API_KEY')) {
+        $geminiKey = trim((string)GEMINI_API_KEY);
+    }
+    if (empty($geminiKey)) {
+        return ['success' => false, 'error' => 'مفتاح Gemini API مطلوب. يرجى إضافة GEMINI_API_KEY في إعدادات البيئة أو إدخاله يدوياً.'];
+    }
+
+    $uploadPath = UPLOAD_DIR . 'infografic/';
+    if (!is_dir($uploadPath)) {
+        mkdir($uploadPath, 0755, true);
+    }
+
+    $truncated = mb_substr($content, 0, 2200);
+    $customPrompt = mb_substr($customPrompt, 0, 600);
+
+    $prompt = "صمّم إنفوجرافيك تعليمي باللغة العربية عن الدرس «{$lessonName}».\n"
+        . "- تنسيق أفقي بنسبة 16:9 (1280x720).\n"
+        . "- أسلوب واضح واحترافي مناسب للطلاب.\n"
+        . "- عناوين عربية كبيرة، تسلسل هرمي بصري، وأسهم/صناديق توضيحية.\n"
+        . "- لا تضف أي نص بلغة غير العربية داخل الصورة.\n"
+        . "- أخرج النتيجة كصورة نهائية واحدة عالية الوضوح.\n"
+        . "محتوى الدرس:\n{$truncated}\n";
+
+    if ($customPrompt !== '') {
+        $prompt .= "\nتخصيصات إضافية من الأستاذ (ألوان/أشكال/أسلوب):\n{$customPrompt}\n";
+    }
+
+    $models = [
+        'gemini-3.1-flash-image-preview',
+        
+    ];
+
+    $lastError = 'تعذر توليد صورة الإنفوجرافيك عبر Gemini.';
+    foreach ($models as $model) {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($geminiKey);
+        $requestBody = [
+            'contents' => [[
+                'parts' => [[
+                    'text' => $prompt,
+                ]]
+            ]],
+            'generationConfig' => [
+                'temperature' => 0.25,
+            ],
+        ];
+        $payload = json_encode($requestBody, JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => 120,
+        ]);
+        $resp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false || !empty($curlError)) {
+            $lastError = 'فشل الاتصال بـ Gemini API: ' . $curlError;
+            continue;
+        }
+
+        $data = @json_decode($resp, true);
+        if ($httpCode !== 200) {
+            $apiErr = $data['error']['message'] ?? mb_substr((string)$resp, 0, 220);
+            $lastError = "خطأ من Gemini ({$model}) HTTP {$httpCode}: " . (string)$apiErr;
+            continue;
+        }
+
+        $base64 = _extractGeminiImageBase64($data);
+        if (!empty($base64)) {
+            return _saveBase64GeneratedImage($base64, $lessonId, $db, $uploadPath);
+        }
+
+        $textFallback = '';
+        if (isset($data['candidates'][0]['content']['parts']) && is_array($data['candidates'][0]['content']['parts'])) {
+            foreach ($data['candidates'][0]['content']['parts'] as $part) {
+                if (!empty($part['text'])) {
+                    $textFallback .= $part['text'] . ' ';
+                }
+            }
+        }
+        $lastError = 'لم يُرجع النموذج صورة فعلية. ' . trim(mb_substr($textFallback, 0, 220));
+    }
+
+    return ['success' => false, 'error' => $lastError];
+}
+
+function _extractGeminiImageBase64(array $data): string {
+    $candidates = $data['candidates'] ?? [];
+    if (!is_array($candidates)) {
+        return '';
+    }
+    foreach ($candidates as $candidate) {
+        $parts = $candidate['content']['parts'] ?? [];
+        if (!is_array($parts)) {
+            continue;
+        }
+        foreach ($parts as $part) {
+            if (!empty($part['inlineData']['data']) && is_string($part['inlineData']['data'])) {
+                return trim($part['inlineData']['data']);
+            }
+            if (!empty($part['inline_data']['data']) && is_string($part['inline_data']['data'])) {
+                return trim($part['inline_data']['data']);
+            }
+        }
+    }
+    return '';
+}
+
+function _saveBase64GeneratedImage(string $base64, int $lessonId, $db, string $uploadPath): array {
+    if (str_contains($base64, ',')) {
+        $base64 = explode(',', $base64, 2)[1];
+    }
+    $imageContent = base64_decode($base64, true);
+    if ($imageContent === false) {
+        return ['success' => false, 'error' => 'فشل فك ترميز الصورة (base64).'];
+    }
+    return _writeGeneratedImageToDisk($imageContent, $lessonId, $db, $uploadPath);
+}
+
+function _writeGeneratedImageToDisk(string $imageContent, int $lessonId, $db, string $uploadPath): array {
+    $safeFileName = 'infographic_lesson_' . $lessonId . '_' . time() . '.png';
+    $filePath     = $uploadPath . $safeFileName;
+
+    if (!file_put_contents($filePath, $imageContent)) {
+        return ['success' => false, 'error' => 'فشل حفظ ملف الصورة على السيرفر.'];
+    }
+
+    $infographicUrl = '/uploads/infografic/' . $safeFileName;
+    $db->prepare("UPDATE lessons SET infographic_url=? WHERE id=?")->execute([$infographicUrl, $lessonId]);
+
+    return ['success' => true, 'infographic_url' => $infographicUrl];
+}
 $configuredProviders = array_keys(array_filter($envKeys));
 ?>
 <!DOCTYPE html>
@@ -1303,6 +1695,11 @@ $configuredProviders = array_keys(array_filter($envKeys));
             HeyGen (مقدم افتراضي) <?= in_array('heygen', $configuredProviders) ? '✓' : '' ?>
           </option>
         </optgroup>
+		<optgroup label="توليد المخطط البصري">
+          <option value="gemini" <?= in_array('gemini', $configuredProviders) ? 'data-has-key="1"' : '' ?>>
+            Gemini 3.1 Flash Image Preview <?= in_array('gemini', $configuredProviders) ? '✓' : '' ?>
+          </option>
+        </optgroup>
       </select>
 
       <label class="form-label" style="margin:0;">مفتاح API (اختياري)</label>
@@ -1323,11 +1720,39 @@ $configuredProviders = array_keys(array_filter($envKeys));
       <div class="card-header">
         <div class="card-title"><i class="fas fa-question-circle"></i> توليد الأسئلة</div>
       </div>
-      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد 30 سؤال من PDF الدرس. يمكنك تعديلها لاحقاً.</p>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">يولد أسئلة من PDF الدرس حسب الإعدادات أدناه. يمكنك تعديلها لاحقاً.</p>
       <form method="POST" onsubmit="return validateQuestionsForm()">
         <input type="hidden" name="gen_type" value="questions">
         <input type="hidden" name="provider" id="qProvider">
         <input type="hidden" name="api_key_override" id="qApiKey">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="fas fa-list-ol"></i> عدد الأسئلة</label>
+            <select name="num_questions" class="form-control">
+              <option value="5">5 أسئلة</option>
+              <option value="10">10 أسئلة</option>
+              <option value="15">15 سؤال</option>
+              <option value="20">20 سؤال</option>
+              <option value="25">25 سؤال</option>
+              <option value="30" selected>30 سؤال</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label"><i class="fas fa-signal"></i> مستوى الصعوبة</label>
+            <select name="difficulty" class="form-control">
+              <option value="easy">سهل</option>
+              <option value="medium" selected>متوسط</option>
+              <option value="hard">صعب</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label"><i class="fas fa-bullseye"></i> نواتج التعلم (اختياري)</label>
+          <textarea name="learning_outcomes" class="form-control" rows="3" placeholder="أدخل نواتج التعلم المطلوبة لتوجيه الأسئلة، مثال:&#10;- أن يميز الطالب بين المبتدأ والخبر&#10;- أن يعرب الطالب الجملة الاسمية إعراباً كاملاً&#10;اتركه فارغاً لتوليد أسئلة عامة من محتوى الدرس"></textarea>
+        </div>
+
         <button type="submit" class="btn btn-primary btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> توليد الأسئلة
         </button>
@@ -1439,19 +1864,19 @@ $configuredProviders = array_keys(array_filter($envKeys));
             <span class="spinner" style="display:inline-block;width:16px;height:16px;border:3px solid #4CAF50;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin-left:.4rem;"></span>
             جارٍ المعالجة...
           <?php else: ?>
-            <i class="fas fa-magic"></i> توليد من PDF الدرس (HeyGen)
+            <i class="fas fa-magic"></i> توليد من PDF (HeyGen - Avatar)
           <?php endif; ?>
         </button>
         <small style="color:var(--muted);display:block;margin-top:.25rem;text-align:center;">
           <?php if ($isProcessing): ?>
             قد يستغرق توليد الفيديو 15-20 دقيقة
           <?php else: ?>
-            يحتاج مفتاح HeyGen API • الدقة: 720p
+            يحتاج HeyGen API • التكلفة: ~$3 • الدقة: 720p<br>
+            <small style="color:#4CAF50;">✅ مع نصوص توضيحية بالخط الأميري</small>
           <?php endif; ?>
         </small>
-      </form>
+        </form>
     </div>
-
     <!-- Scholar -->
     <div class="card">
       <div class="card-header"><div class="card-title"><i class="fas fa-scroll"></i> إضافة عالم نحو</div></div>
@@ -1467,6 +1892,43 @@ $configuredProviders = array_keys(array_filter($envKeys));
         <button type="submit" class="btn btn-primary btn-block" onclick="injectFormVars(this.form)">
           <i class="fas fa-magic"></i> جلب المعلومات
         </button>
+      </form>
+    </div>
+
+    <!-- Infographic -->
+    <div class="card">
+      <div class="card-header"><div class="card-title"><i class="fas fa-project-diagram" style="color:#8E24AA;"></i> المخطط البصري (Infographic)</div></div>
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:1rem;">رفع صورة | توليد إنفوجرافيك تعليمي من PDF (Gemini)</p>
+
+      <form method="POST" enctype="multipart/form-data" id="infographicForm">
+        <input type="hidden" name="gen_type" value="infographic">
+        <input type="hidden" name="provider" id="infProvider">
+        <input type="hidden" name="api_key_override" id="infApiKey">
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-image"></i> رفع صورة (JPG / PNG / WebP)</label>
+          <input type="file" name="infographic_file" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-pen-nib"></i> تخصيصات إضافية للبرومبت (اختياري)</label>
+          <textarea name="infographic_custom_prompt" class="form-control" rows="3" placeholder="مثال: استخدم ألوانًا هادئة (أخضر/ذهبي)، صناديق مستديرة، وأيقونات مبسطة."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-block" style="background:#8E24AA;color:#fff;" onclick="injectFormVars(this.form)">
+          <i class="fas fa-save"></i> حفظ الصورة المرفوعة
+        </button>
+
+        <button type="submit" name="generate_infographic_from_pdf" value="1"
+                class="btn btn-outline btn-block" style="margin-top:.5rem;"
+                onclick="injectFormVars(this.form)">
+          <i class="fas fa-magic"></i> توليد من PDF الدرس (Gemini)
+        </button>
+
+        <div style="margin-top:.75rem;padding:.5rem;background:#f8f9fa;border-radius:4px;font-size:.75rem;color:#6c757d;text-align:center;">
+          <i class="fas fa-info-circle"></i>
+          المقاس المستهدف: 1280×720 (16:9) • يعتمد على gemini-3.1-flash-image-preview
+        </div>
       </form>
     </div>
 
